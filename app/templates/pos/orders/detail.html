@@ -1,0 +1,395 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.order_no }} - BanglaPOS{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <!-- Top Context & Action Bar -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <a href="{{ url_for('pos.order_list') }}" class="text-xs font-bold text-slate-500 hover:text-slate-800">
+                    &larr; Back to Orders
+                </a>
+                <span class="text-slate-300">&bull;</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Order Details</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                    Order #{{ order.order_no }}
+                </h1>
+                <!-- Status Badge -->
+                {% if order.status == 'open' %}
+                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 animate-pulse">
+                        Open
+                    </span>
+                {% elif order.status == 'paid' %}
+                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                        Paid
+                    </span>
+                {% else %}
+                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200">
+                        Cancelled
+                    </span>
+                {% endif %}
+
+                <!-- Type Badge -->
+                {% if order.type == 'dine_in' %}
+                    <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                        🪑 Dine In &bull; {{ order.table.name if order.table else 'Table' }}
+                    </span>
+                {% elif order.type == 'take_away' %}
+                    <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        🛍️ Take Away
+                    </span>
+                {% else %}
+                    <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-800">
+                        ⚡ Quick Bill
+                    </span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+                Placed by <strong>{{ order.creator.name if order.creator else 'Staff' }}</strong> on {{ order.created_at.strftime('%d %B %Y at %I:%M %p') }}
+            </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+            {% if order.status != 'paid' and order.status != 'cancelled' %}
+                <!-- Record Payment / Pay Bill Button -->
+                <a href="{{ url_for('pos.order_pay', order_id=order.id) }}"
+                   class="min-h-[44px] px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5 active:scale-95">
+                    <span>💵</span>
+                    <span>Pay Bill</span>
+                </a>
+            {% endif %}
+
+            {% if order.status == 'open' %}
+                <!-- Add More Items -->
+                <a href="{{ url_for('pos.order_append_redirect', order_id=order.id) }}"
+                   class="min-h-[44px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+                    <span>+</span>
+                    <span>Add More Items</span>
+                </a>
+
+                <!-- Cancel Order (Manager & Owner Only) -->
+                {% if current_user.role in ['owner', 'manager'] %}
+                    <button type="button"
+                            onclick="document.getElementById('cancel-modal').classList.remove('hidden')"
+                            class="min-h-[44px] px-3.5 py-2 border border-rose-300 hover:bg-rose-50 text-rose-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <span>✕</span>
+                        <span>Cancel Order</span>
+                    </button>
+                {% endif %}
+            {% elif order.status == 'paid' and current_user.role in ['owner', 'manager'] %}
+                <!-- Manager Override: Modify Paid Order -->
+                <a href="{{ url_for('pos.order_append_redirect', order_id=order.id) }}"
+                   class="min-h-[44px] px-4 py-2 border border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    <span>✏️</span>
+                    <span>Modify Paid Order</span>
+                </a>
+
+                <!-- Manager Override: Cancel/Void Paid Order -->
+                <button type="button"
+                        onclick="document.getElementById('cancel-modal').classList.remove('hidden')"
+                        class="min-h-[44px] px-3.5 py-2 border border-rose-300 hover:bg-rose-50 text-rose-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    <span>✕</span>
+                    <span>Void/Cancel Order</span>
+                </button>
+            {% endif %}
+
+            <!-- Print Customer Receipt Button -->
+            <a href="{{ url_for('pos.order_receipt', order_id=order.id) }}"
+               target="_blank"
+               class="min-h-[44px] px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+               title="Print 80mm/58mm Customer Receipt">
+                <span>🖨️</span>
+                <span>Print Receipt</span>
+            </a>
+
+            <!-- Print Kitchen Order Ticket (KOT) Button -->
+            <a href="{{ url_for('pos.order_kot', order_id=order.id) }}"
+               target="_blank"
+               class="min-h-[44px] px-3.5 py-2 border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold transition flex items-center gap-1.5 active:scale-95"
+               title="Print Kitchen Ticket (no prices)">
+                <span>👨‍🍳</span>
+                <span>Print KOT</span>
+            </a>
+
+            <a href="{{ url_for('pos.terminal') }}"
+               class="min-h-[44px] px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-bold transition flex items-center">
+                New Order
+            </a>
+        </div>
+    </div>
+
+    <!-- Cancellation Banner if Cancelled -->
+    {% if order.status == 'cancelled' %}
+        <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-sm flex items-start gap-3">
+            <span class="text-xl">⚠️</span>
+            <div>
+                <p class="font-bold">This order was cancelled.</p>
+                <p class="text-xs mt-0.5 text-rose-700">Reason: {{ order.cancel_reason or 'No reason provided' }}</p>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Grid: Items List (Left) and Financial Breakdown (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Left: Order Items Breakdown (7 or 8 Cols) -->
+        <div class="lg:col-span-8 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm">
+                    Ordered Line Items ({{ order.items.count() }})
+                </h3>
+                <span class="text-xs text-slate-400 font-mono">Immutable Price Snapshots</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/30">
+                            <th class="py-3 px-4 sm:px-6">Dish Name</th>
+                            <th class="py-3 px-4 text-right">Unit Price</th>
+                            <th class="py-3 px-4 text-center">Qty</th>
+                            <th class="py-3 px-4 text-right">Line Total</th>
+                            <th class="py-3 px-4 text-center">Kitchen Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        {% for item in order.items.all() %}
+                            <tr class="hover:bg-slate-50/60 transition">
+                                <!-- Dish Snapshot -->
+                                <td class="py-3.5 px-4 sm:px-6">
+                                    <div class="font-bold text-slate-900 leading-snug">
+                                        {{ item.dish_name_snapshot }}
+                                    </div>
+                                    {% if item.note %}
+                                        <div class="text-xs text-amber-700 font-medium mt-0.5 flex items-center gap-1">
+                                            <span>📝</span>
+                                            <span>Note: "{{ item.note }}"</span>
+                                        </div>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Unit Price Snapshot -->
+                                <td class="py-3.5 px-4 text-right font-mono text-slate-700">
+                                    ৳{{ "%.2f"|format(item.unit_price_snapshot) }}
+                                </td>
+
+                                <!-- Quantity -->
+                                <td class="py-3.5 px-4 text-center font-bold font-mono text-slate-900">
+                                    {{ item.quantity }}
+                                </td>
+
+                                <!-- Line Total -->
+                                <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
+                                    ৳{{ "%.2f"|format(item.line_total) }}
+                                </td>
+
+                                <!-- Kitchen Status -->
+                                <td class="py-3.5 px-4 text-center">
+                                    {% if item.kitchen_status == 'ready' %}
+                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase bg-emerald-100 text-emerald-800">
+                                            Ready
+                                        </span>
+                                    {% elif item.kitchen_status == 'preparing' %}
+                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase bg-amber-100 text-amber-800">
+                                            Preparing
+                                        </span>
+                                    {% else %}
+                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase bg-blue-100 text-blue-800">
+                                            New Ticket
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right: Financial Breakdown & Timeline (4 or 5 Cols) -->
+        <div class="lg:col-span-4 space-y-5">
+            <!-- Financial Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <h3 class="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2">
+                    Payment &amp; Tax Summary
+                </h3>
+
+                <div class="space-y-2 text-xs text-slate-600">
+                    <div class="flex justify-between">
+                        <span>Subtotal</span>
+                        <span class="font-mono font-bold text-slate-800">৳{{ "%.2f"|format(order.subtotal) }}</span>
+                    </div>
+
+                    {% if order.discount > 0 %}
+                        <div class="flex justify-between text-emerald-700 font-medium">
+                            <span>Item Discounts</span>
+                            <span class="font-mono font-bold">-৳{{ "%.2f"|format(order.discount) }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% if order.cover_charge > 0 %}
+                        <div class="flex justify-between text-slate-700 font-medium">
+                            <span>Table Cover Charge</span>
+                            <span class="font-mono font-bold text-slate-800">+৳{{ "%.2f"|format(order.cover_charge) }}</span>
+                        </div>
+                    {% endif %}
+
+                    <div class="flex justify-between text-slate-500">
+                        <span>VAT ({{ current_user.restaurant.vat_rate }}% {{ current_user.restaurant.price_mode }})</span>
+                        <span class="font-mono font-bold text-slate-700">৳{{ "%.2f"|format(order.vat_amount) }}</span>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-200 flex justify-between items-baseline">
+                        <span class="font-black text-sm uppercase tracking-wide text-slate-900">Total Bill</span>
+                        <span class="font-mono font-black text-2xl text-emerald-700">
+                            ৳{{ "%.2f"|format(order.total) }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Payment Status Indicator -->
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider">Payment Status</span>
+                    {% if order.payment_status == 'paid' %}
+                        <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800">
+                            ✓ Fully Paid
+                        </span>
+                    {% elif order.payment_status == 'partial' %}
+                        <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800">
+                            Partial Payment
+                        </span>
+                    {% else %}
+                        <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            Unpaid
+                        </span>
+                    {% endif %}
+                </div>
+
+                {% if order.status != 'paid' and order.status != 'cancelled' %}
+                    <div class="pt-3 border-t border-slate-100">
+                        <a href="{{ url_for('pos.order_pay', order_id=order.id) }}"
+                           class="w-full min-h-[44px] px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 active:scale-98">
+                            <span>💳</span>
+                            <span>Record Payment</span>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Recorded Payments Card (Split Payment History) -->
+            {% if order.payments.count() > 0 %}
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
+                    <h4 class="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">
+                        Recorded Payments ({{ order.payments.count() }})
+                    </h4>
+                    <div class="space-y-2">
+                        {% for p in order.payments.all() %}
+                            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs flex items-center justify-between">
+                                <div>
+                                    <div class="font-bold text-slate-800 flex items-center gap-1">
+                                        {% if p.method == 'cash' %}💵 Cash
+                                        {% elif p.method == 'bkash' %}📱 bKash
+                                        {% elif p.method == 'nagad' %}📱 Nagad
+                                        {% else %}💳 Card
+                                        {% endif %}
+                                        {% if p.reference %}
+                                            <span class="font-mono text-[10px] text-slate-500 font-normal">({{ p.reference }})</span>
+                                        {% endif %}
+                                    </div>
+                                    <span class="text-[10px] text-slate-400">
+                                        {{ p.created_at.strftime('%I:%M %p') }} &bull; {{ p.receiver.name if p.receiver else 'Staff' }}
+                                    </span>
+                                </div>
+                                <span class="font-mono font-black text-emerald-700">
+                                    ৳{{ "%.2f"|format(p.amount) }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Timeline Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
+                <h4 class="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500">
+                    Order Timeline
+                </h4>
+                <div class="space-y-2 text-xs text-slate-600">
+                    <div class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        <span>Created: {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                    </div>
+                    {% if order.paid_at %}
+                        <div class="flex items-center gap-2">
+                            <span class="h-2 w-2 rounded-full bg-purple-500"></span>
+                            <span>Paid: {{ order.paid_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                        </div>
+                    {% endif %}
+                    {% if order.status == 'cancelled' %}
+                        <div class="flex items-center gap-2 text-rose-600 font-bold">
+                            <span class="h-2 w-2 rounded-full bg-rose-500"></span>
+                            <span>Cancelled by Manager/Owner</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manager/Owner Order Cancellation Modal -->
+{% if (order.status == 'open' or order.status == 'paid') and current_user.role in ['owner', 'manager'] %}
+    <div id="cancel-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-200">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h3 class="text-lg font-extrabold text-slate-900">
+                        Cancel Order #{{ order.order_no }}
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Cancelling will release table {% if order.table %}<strong>{{ order.table.name }}</strong>{% endif %} and log this action to the Audit Log.
+                    </p>
+                </div>
+                <button type="button"
+                        onclick="document.getElementById('cancel-modal').classList.add('hidden')"
+                        class="text-slate-400 hover:text-slate-600 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg">
+                    ✕
+                </button>
+            </div>
+
+            <form method="POST" action="{{ url_for('pos.order_cancel', order_id=order.id) }}" class="space-y-4">
+                {{ cancel_form.csrf_token }}
+
+                <div>
+                    <label for="reason" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Mandatory Cancellation Reason *
+                    </label>
+                    {{ cancel_form.reason(
+                        id="reason",
+                        rows="3",
+                        class="w-full text-xs p-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-900",
+                        placeholder="e.g. Guest walked out, accidental double punch, wrong item ordered..."
+                    ) }}
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button"
+                            onclick="document.getElementById('cancel-modal').classList.add('hidden')"
+                            class="min-h-[44px] px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition">
+                        Dismiss
+                    </button>
+                    <button type="submit"
+                            class="min-h-[44px] px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg shadow-sm transition">
+                        Confirm Cancellation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+

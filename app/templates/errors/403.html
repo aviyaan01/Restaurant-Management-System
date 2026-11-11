@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}403 Forbidden - Access Denied{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center py-10 px-4">
+    <div class="max-w-lg w-full bg-white p-8 rounded-2xl shadow-sm border border-rose-200 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-100 text-rose-600 mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">403 - Access Forbidden</h1>
+        <p class="mt-2 text-sm text-slate-600">
+            {{ error.description if error and error.description else "Your account role does not possess the server-side permissions required to access this resource." }}
+        </p>
+
+        {% if current_user.is_authenticated %}
+        <div class="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 border border-slate-200">
+            Signed in as: <strong class="text-slate-900">{{ current_user.name }}</strong> &bull; Role: <span class="uppercase font-bold text-emerald-600">{{ current_user.role }}</span>
+        </div>
+        {% endif %}
+
+        <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a href="{{ url_for('main.home') }}"
+               class="min-h-[44px] px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition flex items-center justify-center w-full sm:w-auto">
+                Back to Home
+            </a>
+            <a href="{{ url_for('auth.logout') }}"
+               class="min-h-[44px] px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition flex items-center justify-center w-full sm:w-auto">
+                Switch Account
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

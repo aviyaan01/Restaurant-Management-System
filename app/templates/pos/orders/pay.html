@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}Pay Order #{{ order.order_no }} - BanglaPOS{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Top Navigation / Context -->
+    <div class="flex items-center justify-between">
+        <a href="{{ url_for('pos.order_detail', order_id=order.id) }}"
+           class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white px-3.5 py-2 rounded-lg border border-slate-200 shadow-sm transition">
+            <span>&larr;</span>
+            <span>Back to Order #{{ order.order_no }}</span>
+        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('pos.order_receipt', order_id=order.id) }}"
+               target="_blank"
+               class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm transition"
+               title="Print Current Receipt">
+                <span>🖨️</span>
+                <span>Print Receipt</span>
+            </a>
+            <div class="hidden sm:flex items-center gap-2 text-xs">
+                <span class="text-slate-400">Order Type:</span>
+                {% if order.type == 'dine_in' %}
+                    <span class="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        🪑 Dine In &bull; {{ order.table.name if order.table else 'Table' }}
+                    </span>
+                {% elif order.type == 'take_away' %}
+                    <span class="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        🛍️ Take Away
+                    </span>
+                {% else %}
+                    <span class="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                        ⚡ Quick Bill
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Payment Container Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Column: Bill Summary & Balances (5 cols) -->
+        <div class="md:col-span-5 space-y-5">
+            <!-- Balance Card -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-lg space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                    <div>
+                        <span class="text-[11px] uppercase tracking-wider font-bold text-slate-400">BanglaPOS Billing</span>
+                        <h2 class="text-xl font-black font-mono">Order #{{ order.order_no }}</h2>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider {% if order.payment_status == 'partial' %}bg-amber-500/20 text-amber-300 border border-amber-500/30{% else %}bg-rose-500/20 text-rose-300 border border-rose-500/30{% endif %}">
+                        {{ order.payment_status|title }}
+                    </span>
+                </div>
+
+                <!-- Financial Breakdown -->
+                <div class="space-y-2 text-xs text-slate-300">
+                    <div class="flex justify-between">
+                        <span>Items Subtotal</span>
+                        <span class="font-mono font-bold text-white">৳{{ "%.2f"|format(order.subtotal) }}</span>
+                    </div>
+
+                    {% if order.discount > 0 %}
+                        <div class="flex justify-between text-emerald-400">
+                            <span>Discount</span>
+                            <span class="font-mono font-bold">-৳{{ "%.2f"|format(order.discount) }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% if order.cover_charge > 0 %}
+                        <div class="flex justify-between text-slate-300">
+                            <span>Cover Charge</span>
+                            <span class="font-mono font-bold text-white">+৳{{ "%.2f"|format(order.cover_charge) }}</span>
+                        </div>
+                    {% endif %}
+
+                    <div class="flex justify-between text-slate-400 text-[11px]">
+                        <span>VAT ({{ current_user.restaurant.vat_rate }}% {{ current_user.restaurant.price_mode }})</span>
+                        <span class="font-mono font-bold text-slate-300">৳{{ "%.2f"|format(order.vat_amount) }}</span>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-700/80 flex justify-between items-baseline">
+                        <span class="text-xs uppercase tracking-wider font-bold text-slate-400">Grand Total</span>
+                        <span class="font-mono font-black text-xl text-white">৳{{ "%.2f"|format(order.total) }}</span>
+                    </div>
+
+                    {% if already_paid > 0 %}
+                        <div class="flex justify-between text-emerald-400 text-xs pt-1">
+                            <span>Already Paid</span>
+                            <span class="font-mono font-bold">৳{{ "%.2f"|format(already_paid) }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Remaining Balance Highlight -->
+                <div class="p-3.5 bg-white/10 rounded-xl border border-white/10 flex items-center justify-between">
+                    <div>
+                        <span class="text-[11px] uppercase tracking-wider font-extrabold text-amber-300 block">Balance Due</span>
+                        <span class="text-xs text-slate-300">To be collected</span>
+                    </div>
+                    <div class="text-right">
+                        <span id="display-balance-due" class="font-mono font-black text-2xl text-amber-300" data-due="{{ '%.2f'|format(remaining_due) }}">
+                            ৳{{ "%.2f"|format(remaining_due) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Completed Payments on this Order (Split Payment History) -->
+            {% if completed_payments %}
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">
+                        Recorded Payments ({{ completed_payments|length }})
+                    </h3>
+                    <div class="space-y-2">
+                        {% for p in completed_payments %}
+                            <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                                <div>
+                                    <div class="flex items-center gap-1.5 font-bold text-slate-800">
+                                        {% if p.method == 'cash' %}💵 Cash
+                                        {% elif p.method == 'bkash' %}📱 bKash
+                                        {% elif p.method == 'nagad' %}📱 Nagad
+                                        {% else %}💳 Card
+                                        {% endif %}
+                                        {% if p.reference %}
+                                            <span class="font-mono text-[10px] text-slate-500 font-normal">({{ p.reference }})</span>
+                                        {% endif %}
+                                    </div>
+                                    <span class="text-[10px] text-slate-400">
+                                        {{ p.created_at.strftime('%I:%M %p') }} &bull; {{ p.receiver.name if p.receiver else 'Staff' }}
+                                    </span>
+                                </div>
+                                <span class="font-mono font-black text-emerald-700 text-sm">
+                                    ৳{{ "%.2f"|format(p.amount) }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column: Interactive Payment Form (7 cols) -->
+        <div class="md:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+            <div>
+                <h2 class="text-lg font-black text-slate-900 tracking-tight">Record Payment</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Select a payment method and enter the amount received.</p>
+            </div>
+
+            <form method="POST" action="{{ url_for('pos.order_pay', order_id=order.id) }}" id="payment-form" class="space-y-5">
+                {{ form.csrf_token }}
+
+                <!-- 1. Payment Method Large Touch Selector (>= 48px) -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                        1. Payment Method *
+                    </label>
+                    <!-- Hidden input managed by buttons -->
+                    {{ form.method(id="payment-method-input", class="hidden") }}
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button type="button"
+                                data-method="cash"
+                                onclick="selectMethod('cash')"
+                                class="method-btn min-h-[52px] p-2.5 rounded-xl border-2 text-xs font-black flex flex-col items-center justify-center gap-1 transition active:scale-95 border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm">
+                            <span class="text-xl">💵</span>
+                            <span>Cash</span>
+                        </button>
+
+                        <button type="button"
+                                data-method="bkash"
+                                onclick="selectMethod('bkash')"
+                                class="method-btn min-h-[52px] p-2.5 rounded-xl border-2 text-xs font-bold flex flex-col items-center justify-center gap-1 transition active:scale-95 border-slate-200 bg-slate-50 text-slate-700 hover:border-pink-300">
+                            <span class="text-xl">📱</span>
+                            <span>bKash</span>
+                        </button>
+
+                        <button type="button"
+                                data-method="nagad"
+                                onclick="selectMethod('nagad')"
+                                class="method-btn min-h-[52px] p-2.5 rounded-xl border-2 text-xs font-bold flex flex-col items-center justify-center gap-1 transition active:scale-95 border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-300">
+                            <span class="text-xl">📱</span>
+                            <span>Nagad</span>
+                        </button>
+
+                        <button type="button"
+                                data-method="card"
+                                onclick="selectMethod('card')"
+                                class="method-btn min-h-[52px] p-2.5 rounded-xl border-2 text-xs font-bold flex flex-col items-center justify-center gap-1 transition active:scale-95 border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300">
+                            <span class="text-xl">💳</span>
+                            <span>Card</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Amount to Pay -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="amount" class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                            2. Amount to Charge / Settle (৳ BDT) *
+                        </label>
+                        <button type="button"
+                                onclick="setFullBalance()"
+                                class="text-[11px] font-bold text-emerald-600 hover:text-emerald-800 underline">
+                            Pay Full Due (৳{{ "%.2f"|format(remaining_due) }})
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-mono font-bold text-lg">
+                            ৳
+                        </span>
+                        {{ form.amount(
+                            id="amount-input",
+                            class="w-full min-h-[48px] pl-9 pr-4 text-xl font-mono font-black text-slate-900 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm",
+                            placeholder="0.00",
+                            step="0.01",
+                            min="0.01",
+                            oninput="onAmountChanged()"
+                        ) }}
+                    </div>
+                    {% if form.amount.errors %}
+                        <p class="text-xs text-rose-600 font-medium mt-1">{{ form.amount.errors[0] }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 3. Cash Calculator Section (Visible only when Cash is selected) -->
+                <div id="cash-calculator-section" class="space-y-3 p-4 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-emerald-900">
+                        Cash Tendered &amp; Change Calculator
+                    </label>
+
+                    <!-- Quick Cash Preset Buttons (>= 44px) -->
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="setCashPreset('exact')" class="min-h-[44px] px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 rounded-lg text-xs font-bold shadow-sm transition active:scale-95">
+                            Exact Bill
+                        </button>
+                        <button type="button" onclick="addCashPreset(50)" class="min-h-[44px] px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold shadow-sm transition active:scale-95">
+                            +৳50
+                        </button>
+                        <button type="button" onclick="addCashPreset(100)" class="min-h-[44px] px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold shadow-sm transition active:scale-95">
+                            +৳100
+                        </button>
+                        <button type="button" onclick="addCashPreset(500)" class="min-h-[44px] px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold shadow-sm transition active:scale-95">
+                            +৳500
+                        </button>
+                        <button type="button" onclick="setCashFixed(500)" class="min-h-[44px] px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold shadow-sm transition active:scale-95">
+                            ৳500 Note
+                        </button>
+                        <button type="button" onclick="setCashFixed(1000)" class="min-h-[44px] px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold shadow-sm transition active:scale-95">
+                            ৳1,000 Note
+                        </button>
+                    </div>
+
+                    <!-- Cash Received Input & Live Change Output -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <label for="cash-received-input" class="block text-[11px] font-bold text-slate-600 mb-1">
+                                Cash Received from Customer
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-mono font-bold">
+                                    ৳
+                                </span>
+                                {{ form.cash_received(
+                                    id="cash-received-input",
+                                    class="w-full min-h-[44px] pl-8 pr-3 text-lg font-mono font-bold text-slate-900 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white",
+                                    placeholder="0.00",
+                                    step="0.01",
+                                    min="0.00",
+                                    oninput="calculateChangeDue()"
+                                ) }}
+                            </div>
+                        </div>
+
+                        <!-- Change Due Banner -->
+                        <div class="flex flex-col justify-end">
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">
+                                Change Due to Customer
+                            </label>
+                            <div id="change-due-box" class="min-h-[44px] px-3 py-2 bg-emerald-100/90 border border-emerald-300 rounded-lg flex items-center justify-between">
+                                <span class="text-xs font-bold text-emerald-900">Return Change:</span>
+                                <span id="change-due-text" class="font-mono font-black text-xl text-emerald-900">৳0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Reference / TrxID (for digital wallets & cards) -->
+                <div id="reference-section">
+                    <label for="reference-input" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Transaction Reference / TrxID <span id="ref-optional-badge" class="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    {{ form.reference(
+                        id="reference-input",
+                        class="w-full min-h-[44px] px-3.5 text-sm font-mono rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 shadow-sm",
+                        placeholder="e.g. TrxID 9K8L2M1 or Card Slip #4892"
+                    ) }}
+                </div>
+
+                <!-- 5. Submit Button (>= 48px touch target) -->
+                <div class="pt-2">
+                    <button type="submit"
+                            id="submit-payment-btn"
+                            class="w-full min-h-[52px] px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-base rounded-xl shadow-md shadow-emerald-600/25 transition active:scale-98 flex items-center justify-center gap-2">
+                        <span>💰</span>
+                        <span id="submit-btn-text">Confirm Payment of ৳{{ "%.2f"|format(remaining_due) }}</span>
+                    </button>
+                    <p class="text-[11px] text-center text-slate-400 mt-2">
+                        Recorded automatically under <strong>{{ current_user.name }}</strong> ({{ current_user.role|title }}).
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Client-side Script -->
+<script>
+    const remainingDue = parseFloat(document.getElementById('display-balance-due').dataset.due) || 0.0;
+    const amountInput = document.getElementById('amount-input');
+    const cashInput = document.getElementById('cash-received-input');
+    const changeDueText = document.getElementById('change-due-text');
+    const changeDueBox = document.getElementById('change-due-box');
+    const methodInput = document.getElementById('payment-method-input');
+    const cashSection = document.getElementById('cash-calculator-section');
+    const submitBtnText = document.getElementById('submit-btn-text');
+
+    function selectMethod(method) {
+        methodInput.value = method;
+
+        // Update button visual styles
+        document.querySelectorAll('.method-btn').forEach(btn => {
+            if (btn.dataset.method === method) {
+                btn.className = "method-btn min-h-[52px] p-2.5 rounded-xl border-2 text-xs font-black flex flex-col items-center justify-center gap-1 transition active:scale-95 border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm";
+            } else {
+                btn.className = "method-btn min-h-[52px] p-2.5 rounded-xl border-2 text-xs font-bold flex flex-col items-center justify-center gap-1 transition active:scale-95 border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300";
+            }
+        });
+
+        // Toggle cash calculator
+        if (method === 'cash') {
+            cashSection.classList.remove('hidden');
+            document.getElementById('ref-optional-badge').innerText = "(Optional)";
+        } else {
+            cashSection.classList.add('hidden');
+            document.getElementById('ref-optional-badge').innerText = "(Recommended for Auditing)";
+        }
+
+        updateSubmitText();
+    }
+
+    function setFullBalance() {
+        amountInput.value = remainingDue.toFixed(2);
+        onAmountChanged();
+    }
+
+    function setCashPreset(type) {
+        if (type === 'exact') {
+            const amt = parseFloat(amountInput.value) || 0.0;
+            cashInput.value = amt.toFixed(2);
+        }
+        calculateChangeDue();
+    }
+
+    function addCashPreset(extra) {
+        const current = parseFloat(cashInput.value) || parseFloat(amountInput.value) || 0.0;
+        cashInput.value = (current + extra).toFixed(2);
+        calculateChangeDue();
+    }
+
+    function setCashFixed(fixedAmt) {
+        cashInput.value = parseFloat(fixedAmt).toFixed(2);
+        calculateChangeDue();
+    }
+
+    function onAmountChanged() {
+        updateSubmitText();
+        calculateChangeDue();
+    }
+
+    function updateSubmitText() {
+        const amt = parseFloat(amountInput.value) || 0.0;
+        const method = (methodInput.value || 'cash').toUpperCase();
+        submitBtnText.innerText = `Confirm Payment of ৳${amt.toFixed(2)} via ${method}`;
+    }
+
+    function calculateChangeDue() {
+        const amtToPay = parseFloat(amountInput.value) || 0.0;
+        const cashTendered = parseFloat(cashInput.value) || 0.0;
+
+        if (cashTendered >= amtToPay) {
+            const change = cashTendered - amtToPay;
+            changeDueText.innerText = `৳${change.toFixed(2)}`;
+            changeDueBox.className = "min-h-[44px] px-3 py-2 bg-emerald-100 border border-emerald-300 rounded-lg flex items-center justify-between";
+            changeDueText.className = "font-mono font-black text-xl text-emerald-900";
+        } else {
+            const short = amtToPay - cashTendered;
+            changeDueText.innerText = `-৳${short.toFixed(2)} (Short)`;
+            changeDueBox.className = "min-h-[44px] px-3 py-2 bg-rose-50 border border-rose-300 rounded-lg flex items-center justify-between";
+            changeDueText.className = "font-mono font-black text-sm text-rose-700";
+        }
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const initialMethod = methodInput.value || 'cash';
+        selectMethod(initialMethod);
+        if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
+            setFullBalance();
+        } else {
+            onAmountChanged();
+        }
+    });
+</script>
+{% endblock %}
+

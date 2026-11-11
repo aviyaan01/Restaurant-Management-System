@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- Admin Sidebar Navigation (Responsive: tablet & desktop friendly, touch targets >= 44px) -->
+    <aside class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-6">
+        <!-- Tenant & Role Badge Header -->
+        <div class="p-5 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Restaurant Tenant</span>
+                {% if current_user.is_owner %}
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-purple-100 text-purple-800 border border-purple-200">
+                        Owner
+                    </span>
+                {% elif current_user.role == 'manager' %}
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-blue-100 text-blue-800 border border-blue-200">
+                        Manager
+                    </span>
+                {% else %}
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {{ current_user.role.title() }}
+                    </span>
+                {% endif %}
+            </div>
+            <div class="font-extrabold text-slate-900 text-base leading-snug truncate">
+                {{ current_user.restaurant.name }}
+            </div>
+            <div class="text-xs text-slate-500 font-mono mt-0.5">
+                BIN: {{ current_user.restaurant.bin or 'Not Set' }}
+            </div>
+        </div>
+
+        <!-- Sidebar Navigation Links -->
+        <nav class="p-3 space-y-1">
+            {% if current_user.role in ['owner', 'manager'] %}
+            <!-- Group 1: General & Overview -->
+            <div class="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Overview
+            </div>
+
+            <a href="{{ url_for('admin.dashboard') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if request.endpoint == 'admin.dashboard' %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <!-- Group 2: Menu Management (Owner & Manager) -->
+            <div class="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Menu &amp; Catalog
+            </div>
+
+            <a href="{{ url_for('admin.category_list') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'category' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">📁</span>
+                <span>Categories</span>
+            </a>
+
+            <a href="{{ url_for('admin.dish_list') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'dish' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">🍲</span>
+                <span>Dishes &amp; Pricing</span>
+            </a>
+            {% endif %}
+
+            <!-- Group: Floor & Dining Tables -->
+            <div class="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Floor &amp; Dining
+            </div>
+
+            <a href="{{ url_for('admin.table_board') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'board' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">🪑</span>
+                <span>Live Table Board</span>
+            </a>
+
+            {% if current_user.role in ['owner', 'manager'] %}
+            <a href="{{ url_for('admin.space_list') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'space' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">🏢</span>
+                <span>Dining Spaces</span>
+            </a>
+
+            <a href="{{ url_for('admin.table_list') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'table_list' in request.endpoint or 'table_create' in request.endpoint or 'table_edit' in request.endpoint or 'table_bulk' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">📋</span>
+                <span>Tables Directory</span>
+            </a>
+            {% endif %}
+
+            <!-- Group 3: Operations Links -->
+            <div class="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Operations
+            </div>
+
+            <a href="{{ url_for('pos.terminal') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 text-slate-700 hover:bg-slate-100 transition">
+                <span class="text-base">💳</span>
+                <span>POS Register</span>
+            </a>
+
+            <a href="{{ url_for('pos.order_list') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'order' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">📋</span>
+                <span>Orders Directory</span>
+            </a>
+
+            <a href="{{ url_for('kitchen.display') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 text-slate-700 hover:bg-slate-100 transition">
+                <span class="text-base">🍳</span>
+                <span>Kitchen Display (KDS)</span>
+            </a>
+
+            <!-- Group 4: Administration (STRICTLY OWNER-ONLY) -->
+            {% if current_user.is_owner %}
+                <div class="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-rose-500 flex items-center justify-between">
+                    <span>Administration</span>
+                    <span class="text-[10px] bg-rose-50 text-rose-700 px-1.5 py-0.2 rounded border border-rose-200">Owner</span>
+                </div>
+
+                <a href="{{ url_for('admin.staff_list') }}"
+                   class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                          {% if 'staff' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                    <span class="text-base">👥</span>
+                    <span>Staff &amp; Access</span>
+                </a>
+
+                <a href="{{ url_for('admin.settings') }}"
+                   class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                          {% if request.endpoint == 'admin.settings' %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                    <span class="text-base">⚙️</span>
+                    <span>Restaurant &amp; VAT</span>
+                </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <!-- Main Admin Content Area -->
+    <section class="lg:col-span-9 space-y-6">
+        {% block admin_content %}{% endblock %}
+    </section>
+</div>
+{% endblock %}
+

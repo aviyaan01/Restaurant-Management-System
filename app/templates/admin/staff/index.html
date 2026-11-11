@@ -1,0 +1,167 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Staff Management - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header Banner -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-100 text-rose-800">
+                        Owner Only
+                    </span>
+                    <span class="text-xs text-slate-500 font-medium">
+                        {{ current_user.restaurant.name }}
+                    </span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Staff Team &amp; Access Control
+                </h1>
+                <p class="text-slate-600 mt-1 text-sm">
+                    Manage team accounts, assign operational roles, and toggle instant system access.
+                </p>
+            </div>
+
+            <!-- Actions (44px target) -->
+            <div class="flex items-center gap-2">
+                <a href="{{ url_for('admin.dashboard') }}"
+                   class="min-h-[44px] px-4 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+                    &larr; Admin Dashboard
+                </a>
+                <a href="{{ url_for('admin.staff_create') }}"
+                   class="min-h-[44px] px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center transition">
+                    + Add Staff Member
+                </a>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mt-6 pt-6 border-t border-slate-100">
+            <form method="GET" action="{{ url_for('admin.staff_list') }}" class="flex flex-col sm:flex-row gap-2">
+                <div class="relative flex-1">
+                    <input type="text"
+                           name="q"
+                           value="{{ search_query }}"
+                           placeholder="Search by name, email, or mobile number..."
+                           class="w-full min-h-[44px] pl-10 pr-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        🔍
+                    </span>
+                </div>
+                <button type="submit"
+                        class="min-h-[44px] px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center justify-center">
+                    Search
+                </button>
+                {% if search_query %}
+                    <a href="{{ url_for('admin.staff_list') }}"
+                       class="min-h-[44px] px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg transition flex items-center justify-center">
+                        Clear Search
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Staff Directory Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <th class="py-3.5 px-4 sm:px-6">Staff Member</th>
+                        <th class="py-3.5 px-4">Email</th>
+                        <th class="py-3.5 px-4">Assigned Role</th>
+                        <th class="py-3.5 px-4">Account Status</th>
+                        <th class="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                    {% for staff in staff_members %}
+                        <tr class="hover:bg-slate-50/75 transition">
+                            <!-- Name & Phone -->
+                            <td class="py-3.5 px-4 sm:px-6">
+                                <div class="font-bold text-slate-900">{{ staff.name }}</div>
+                                <div class="text-xs text-slate-500">{{ staff.phone or 'No phone recorded' }}</div>
+                            </td>
+
+                            <!-- Email -->
+                            <td class="py-3.5 px-4 font-mono text-xs text-slate-700">
+                                {{ staff.email }}
+                            </td>
+
+                            <!-- Role Badge -->
+                            <td class="py-3.5 px-4">
+                                {% if staff.role == 'owner' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                        Owner
+                                    </span>
+                                {% elif staff.role == 'manager' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                        Manager
+                                    </span>
+                                {% elif staff.role == 'cashier' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        Cashier
+                                    </span>
+                                {% elif staff.role == 'kitchen' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                        Kitchen Staff
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- HTMX Toggle Status Cell -->
+                            <td class="py-3.5 px-4">
+                                {% include "admin/staff/_status_cell.html" %}
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="py-3.5 px-4 text-right">
+                                <a href="{{ url_for('admin.staff_edit', user_id=staff.id) }}"
+                                   class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition">
+                                    Edit
+                                </a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-slate-500 text-sm">
+                                {% if search_query %}
+                                    No staff members match the query "<strong>{{ search_query }}</strong>".
+                                {% else %}
+                                    No staff members found.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if pagination.pages > 1 %}
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <div class="text-xs text-slate-500">
+                    Showing page <strong>{{ pagination.page }}</strong> of <strong>{{ pagination.pages }}</strong> ({{ pagination.total }} total staff)
+                </div>
+                <div class="flex items-center gap-1">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('admin.staff_list', page=pagination.prev_num, q=search_query) }}"
+                           class="min-h-[44px] px-3 py-1.5 rounded border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center">
+                            &larr; Previous
+                        </a>
+                    {% endif %}
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('admin.staff_list', page=pagination.next_num, q=search_query) }}"
+                           class="min-h-[44px] px-3 py-1.5 rounded border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center">
+                            Next &rarr;
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

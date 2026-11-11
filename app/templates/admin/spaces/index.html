@@ -1,0 +1,135 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Dining Spaces &amp; Zones - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header Banner -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 mb-2">
+                    Floor &amp; Layout
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Dining Spaces &amp; Zones
+                </h1>
+                <p class="text-slate-600 mt-1 text-sm">
+                    Organize your tables into distinct dining zones (e.g. Ground Floor, AC Dining Hall, Rooftop Garden).
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+                <a href="{{ url_for('admin.table_board') }}"
+                   class="min-h-[44px] px-4 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold shadow-sm flex items-center justify-center transition">
+                    🪑 Live Table Board
+                </a>
+                <a href="{{ url_for('admin.space_create') }}"
+                   class="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center transition">
+                    + Add Space
+                </a>
+            </div>
+        </div>
+
+        <!-- Invariant Notice -->
+        <div class="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5">
+            <span class="text-slate-500 font-bold text-sm leading-none">ℹ</span>
+            <span>
+                <strong>Space Safety Rule:</strong> A dining space cannot be deleted if any table inside is currently marked as occupied or has an active open order.
+            </span>
+        </div>
+    </div>
+
+    <!-- Spaces Directory Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <th class="py-3.5 px-4 sm:px-6">Space / Zone Name</th>
+                        <th class="py-3.5 px-4 text-center">Total Tables</th>
+                        <th class="py-3.5 px-4 text-center">Open (Available)</th>
+                        <th class="py-3.5 px-4 text-center">Occupied</th>
+                        <th class="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                    {% for space in spaces %}
+                        {% set stats = space_stats.get(space.id, {'total': 0, 'open': 0, 'occupied': 0}) %}
+                        <tr class="hover:bg-slate-50/75 transition">
+                            <!-- Name -->
+                            <td class="py-3.5 px-4 sm:px-6 font-bold text-slate-900">
+                                <a href="{{ url_for('admin.table_list', space_id=space.id) }}"
+                                   class="hover:text-emerald-600 transition flex items-center gap-2">
+                                    <span class="text-base">🏢</span>
+                                    <span>{{ space.name }}</span>
+                                </a>
+                            </td>
+
+                            <!-- Total Tables -->
+                            <td class="py-3.5 px-4 text-center">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                                    {{ stats.total }} tables
+                                </span>
+                            </td>
+
+                            <!-- Open Tables -->
+                            <td class="py-3.5 px-4 text-center">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                    {{ stats.open }} open
+                                </span>
+                            </td>
+
+                            <!-- Occupied Tables -->
+                            <td class="py-3.5 px-4 text-center">
+                                {% if stats.occupied > 0 %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 animate-pulse">
+                                        {{ stats.occupied }} occupied
+                                    </span>
+                                {% else %}
+                                    <span class="text-xs text-slate-400 font-medium">0 occupied</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="py-3.5 px-4 text-right space-x-2 whitespace-nowrap">
+                                <a href="{{ url_for('admin.table_list', space_id=space.id) }}"
+                                   class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition min-h-[36px]">
+                                    View Tables
+                                </a>
+                                <a href="{{ url_for('admin.space_edit', space_id=space.id) }}"
+                                   class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition min-h-[36px]">
+                                    Edit
+                                </a>
+                                <form method="POST"
+                                      action="{{ url_for('admin.space_delete', space_id=space.id) }}"
+                                      class="inline-block"
+                                      onsubmit="return confirm('Delete dining space \'{{ space.name }}\' and all its tables? This cannot be undone.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit"
+                                            class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition min-h-[36px]">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="py-12 text-center text-slate-500">
+                                <span class="text-3xl block mb-2">🏢</span>
+                                <p class="text-sm font-semibold text-slate-700">No dining spaces found.</p>
+                                <p class="text-xs text-slate-500 mt-1">Start by creating dining spaces like "Ground Floor" or "Rooftop".</p>
+                                <a href="{{ url_for('admin.space_create') }}"
+                                   class="inline-flex items-center min-h-[44px] px-4 py-2 mt-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition">
+                                    + Create First Dining Space
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

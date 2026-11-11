@@ -1,0 +1,76 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ title }} - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+            <div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 mb-1">
+                    Menu Categories
+                </span>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {{ title }}
+                </h1>
+            </div>
+            <a href="{{ url_for('admin.category_list') }}"
+               class="min-h-[44px] px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center transition">
+                &larr; Back to Categories
+            </a>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" class="space-y-5">
+            {{ form.csrf_token }}
+
+            <!-- Category Name -->
+            <div>
+                <label for="name" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Category Name *
+                </label>
+                {{ form.name(
+                    id="name",
+                    class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                    placeholder="e.g. Biryani & Polao, Appetizers, Beverages"
+                ) }}
+                {% if form.name.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.name.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Sort Order -->
+            <div>
+                <label for="sort_order" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Display Sort Order
+                </label>
+                {{ form.sort_order(
+                    id="sort_order",
+                    type="number",
+                    min="0",
+                    class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-mono",
+                    placeholder="0"
+                ) }}
+                <p class="mt-1 text-[11px] text-slate-500">Categories with lower sort numbers appear first on the POS register.</p>
+                {% if form.sort_order.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.sort_order.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Actions (44px target) -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <a href="{{ url_for('admin.category_list') }}"
+                   class="min-h-[44px] px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-lg transition flex items-center justify-center">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="min-h-[44px] px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-[0.99] flex items-center justify-center">
+                    {{ form.submit.label.text }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

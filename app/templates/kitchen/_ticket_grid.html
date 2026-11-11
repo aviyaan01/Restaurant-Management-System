@@ -1,0 +1,178 @@
+{% if tickets %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {% for ticket in tickets %}
+            <!-- Ticket Card (Wall-Mounted High-Contrast View) -->
+            <div class="rounded-2xl border-2 shadow-lg flex flex-col justify-between overflow-hidden transition-all duration-200
+                        {% if ticket.urgency == 'urgent' %}
+                            border-rose-500 bg-slate-900 shadow-rose-950/40 ring-2 ring-rose-500/30
+                        {% elif ticket.urgency == 'warning' %}
+                            border-amber-500 bg-slate-900 shadow-amber-950/40
+                        {% else %}
+                            border-slate-700 bg-slate-900/95 shadow-black/40
+                        {% endif %}">
+
+                <!-- Ticket Header -->
+                <div class="p-3.5 border-b
+                            {% if ticket.urgency == 'urgent' %}
+                                bg-rose-950/80 border-rose-800 text-rose-100
+                            {% elif ticket.urgency == 'warning' %}
+                                bg-amber-950/80 border-amber-800 text-amber-100
+                            {% else %}
+                                bg-slate-800/90 border-slate-700 text-slate-100
+                            {% endif %}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-2xl font-black font-mono tracking-tight">
+                                #{{ ticket.order_no }}
+                            </span>
+                            <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md
+                                         {% if ticket.order_type == 'dine_in' %}
+                                             bg-blue-500/30 text-blue-200 border border-blue-400/30
+                                         {% elif ticket.order_type == 'take_away' %}
+                                             bg-amber-500/30 text-amber-200 border border-amber-400/30
+                                         {% else %}
+                                             bg-slate-700 text-slate-300
+                                         {% endif %}">
+                                {% if ticket.order_type == 'dine_in' %}
+                                    🪑 {{ ticket.table_name or 'Table' }}
+                                {% elif ticket.order_type == 'take_away' %}
+                                    🛍️ Take Away
+                                {% else %}
+                                    ⚡ Quick
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <!-- Ticket Status Badge -->
+                        <span class="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full
+                                     {% if ticket.ticket_status == 'new' %}
+                                         bg-blue-600 text-white animate-pulse
+                                     {% else %}
+                                         bg-amber-500 text-slate-950 font-black
+                                     {% endif %}">
+                            {{ ticket.ticket_status }}
+                        </span>
+                    </div>
+
+                    <!-- Elapsed Time & Urgency -->
+                    <div class="flex items-center justify-between text-xs mt-2 pt-1.5 border-t border-white/10">
+                        <span class="font-mono font-bold flex items-center gap-1.5
+                                     {% if ticket.urgency == 'urgent' %}
+                                         text-rose-400 animate-pulse font-black
+                                     {% elif ticket.urgency == 'warning' %}
+                                         text-amber-400 font-black
+                                     {% else %}
+                                         text-slate-300
+                                     {% endif %}">
+                            <span>⏱️</span>
+                            <span>{{ ticket.elapsed_minutes }}m elapsed</span>
+                            {% if ticket.urgency == 'urgent' %}
+                                <span class="bg-rose-600 text-white text-[10px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase">URGENT</span>
+                            {% elif ticket.urgency == 'warning' %}
+                                <span class="bg-amber-500 text-slate-950 text-[10px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase">DELAYED</span>
+                            {% endif %}
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] text-slate-400 font-mono">
+                                {{ ticket.created_at.strftime('%I:%M %p') }}
+                            </span>
+                            <a href="{{ url_for('pos.order_kot', order_id=ticket.order_id) }}"
+                               target="_blank"
+                               class="text-[10px] text-amber-400/80 hover:text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition"
+                               title="Print Kitchen Order Ticket">
+                                🖨️ KOT
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ticket Line Items -->
+                <div class="p-3.5 space-y-2.5 flex-1 divide-y divide-slate-800">
+                    {% for item in ticket.line_items %}
+                        <div class="pt-2 first:pt-0 flex items-start justify-between gap-3">
+                            <div class="flex-1">
+                                <div class="flex items-baseline gap-2">
+                                    <span class="text-lg font-black font-mono text-emerald-400 shrink-0">
+                                        {{ item.quantity }}x
+                                    </span>
+                                    <span class="text-sm font-bold leading-snug {% if item.kitchen_status == 'ready' %}line-through text-slate-500{% else %}text-white{% endif %}">
+                                        {{ item.dish_name_snapshot }}
+                                    </span>
+                                </div>
+
+                                <!-- Chef Note -->
+                                {% if item.note %}
+                                    <div class="text-xs font-semibold text-amber-300 bg-amber-950/50 border border-amber-800/60 rounded px-2 py-0.5 mt-1 inline-flex items-center gap-1">
+                                        <span>📝</span>
+                                        <span>{{ item.note }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Single Item Bump Button / Status -->
+                            <div class="shrink-0 pt-0.5">
+                                {% if item.kitchen_status == 'new' %}
+                                    <button hx-post="{{ url_for('kitchen.bump_item_route', item_id=item.id) }}"
+                                            hx-vals='{"target_status": "preparing"}'
+                                            hx-target="#kds-board"
+                                            hx-swap="innerHTML"
+                                            title="Mark item Preparing"
+                                            class="min-h-[36px] px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/40 rounded-lg text-xs font-bold transition active:scale-95">
+                                        Start
+                                    </button>
+                                {% elif item.kitchen_status == 'preparing' %}
+                                    <button hx-post="{{ url_for('kitchen.bump_item_route', item_id=item.id) }}"
+                                            hx-vals='{"target_status": "ready"}'
+                                            hx-target="#kds-board"
+                                            hx-swap="innerHTML"
+                                            title="Mark item Ready"
+                                            class="min-h-[36px] px-2.5 py-1 bg-amber-500/20 hover:bg-emerald-600 hover:text-white text-amber-300 border border-amber-500/50 rounded-lg text-xs font-bold transition active:scale-95">
+                                        ✓ Ready
+                                    </button>
+                                {% else %}
+                                    <span class="text-xs font-black text-emerald-400 px-2 py-1 bg-emerald-950/40 border border-emerald-800 rounded-lg inline-block">
+                                        ✓ Done
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Bump Bar Footer (Touch Target >= 48px) -->
+                <div class="p-3 bg-slate-950/80 border-t border-slate-800 flex gap-2">
+                    {% if ticket.has_new %}
+                        <!-- Start Preparing Entire Ticket -->
+                        <button hx-post="{{ url_for('kitchen.bump_ticket_route', order_id=ticket.order_id) }}"
+                                hx-vals='{"target_status": "preparing"}'
+                                hx-target="#kds-board"
+                                hx-swap="innerHTML"
+                                class="flex-1 min-h-[48px] bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5">
+                            <span>▶️</span>
+                            <span>Start Preparing</span>
+                        </button>
+                    {% endif %}
+
+                    <!-- Mark All Items Ready (Moves Ticket to History) -->
+                    <button hx-post="{{ url_for('kitchen.bump_ticket_route', order_id=ticket.order_id) }}"
+                            hx-vals='{"target_status": "ready"}'
+                            hx-target="#kds-board"
+                            hx-swap="innerHTML"
+                            class="{% if ticket.has_new %}w-auto px-4{% else %}flex-1{% endif %} min-h-[48px] bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-sm rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5">
+                        <span>✓</span>
+                        <span>{% if ticket.has_new %}Ready All{% else %}Mark Ready &amp; Bump{% endif %}</span>
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <!-- Empty Active Queue State -->
+    <div class="py-20 text-center text-slate-500 space-y-3">
+        <span class="text-6xl block opacity-60">🍳</span>
+        <h3 class="text-xl font-black text-slate-300">All Orders Bumped &amp; Clear!</h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+            No pending tickets in the kitchen queue. New orders placed from the POS terminal will appear automatically within 2 seconds.
+        </p>
+    </div>
+{% endif %}

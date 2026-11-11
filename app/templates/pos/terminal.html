@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}POS Register Terminal - BanglaPOS{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <!-- Top Action / Context Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <span class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div>
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">POS Terminal &bull; {{ current_user.restaurant.name }}</span>
+                <div class="text-sm font-extrabold text-slate-900">
+                    Cashier: {{ current_user.name }}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('admin.table_board') }}"
+               class="min-h-[44px] px-3.5 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                <span>🪑</span>
+                <span>Floor Map</span>
+            </a>
+            <a href="{{ url_for('pos.order_list') }}"
+               class="min-h-[44px] px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+                <span>📋</span>
+                <span>Orders Directory</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Dual-Pane POS Register (Tablet 10-inch Optimized) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <!-- Left Pane: Menu Catalog & Search (7 Cols on LG, 8 on XL) -->
+        <div class="lg:col-span-7 xl:col-span-8 space-y-4">
+            <!-- Search & Quick Filter Bar -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3.5 flex flex-col sm:flex-row gap-3">
+                <!-- Search Box with HTMX Auto-Search -->
+                <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        🔍
+                    </span>
+                    <input type="text"
+                           id="pos-search-input"
+                           name="q"
+                           value="{{ search_query or '' }}"
+                           placeholder="Search dishes by name (e.g. Kacchi, Naan, Borhani)..."
+                           hx-get="{{ url_for('pos.catalog_partial') }}"
+                           hx-trigger="keyup changed delay:250ms, search"
+                           hx-target="#pos-dish-grid"
+                           hx-swap="outerHTML"
+                           class="w-full min-h-[44px] pl-10 pr-4 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition">
+                </div>
+            </div>
+
+            <!-- Category Pills Filter Strip (Touch Targets >= 44px) -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <!-- All Dishes Pill -->
+                <button type="button"
+                        hx-get="{{ url_for('pos.catalog_partial') }}"
+                        hx-target="#pos-dish-grid"
+                        hx-swap="outerHTML"
+                        onclick="document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('bg-emerald-600', 'text-white')); this.classList.add('bg-emerald-600', 'text-white');"
+                        class="cat-pill min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition shadow-sm
+                               {% if not selected_category_id %} bg-emerald-600 text-white {% else %} bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 {% endif %}">
+                    All Dishes
+                </button>
+
+                <!-- Individual Category Pills -->
+                {% for cat in categories %}
+                    <button type="button"
+                            hx-get="{{ url_for('pos.catalog_partial', category_id=cat.id) }}"
+                            hx-target="#pos-dish-grid"
+                            hx-swap="outerHTML"
+                            onclick="document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('bg-emerald-600', 'text-white')); this.classList.add('bg-emerald-600', 'text-white');"
+                            class="cat-pill min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition shadow-sm
+                                   {% if selected_category_id == cat.id %} bg-emerald-600 text-white {% else %} bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 {% endif %}">
+                        {{ cat.name }}
+                    </button>
+                {% endfor %}
+            </div>
+
+            <!-- Dish Grid Container (HTMX Target) -->
+            {% include 'pos/_catalog.html' %}
+        </div>
+
+        <!-- Right Pane: Reactive Cart (5 Cols on LG, 4 on XL) -->
+        <div class="lg:col-span-5 xl:col-span-4">
+            {% include 'pos/_cart.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

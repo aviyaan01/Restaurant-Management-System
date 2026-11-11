@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard & Blueprint Overview - BanglaPOS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Hero Banner -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
+                    Step 1: Project Skeleton Initialized
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Bangladeshi Multi-Restaurant POS
+                </h1>
+                <p class="text-slate-600 mt-1 text-sm sm:text-base">
+                    Flask Application Factory, SQLAlchemy, Flask-Migrate, Flask-Login, Flask-WTF, HTMX & Tailwind.
+                </p>
+            </div>
+
+            <!-- HTMX Database Health Check Widget -->
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col items-start sm:items-end justify-center min-w-[240px]">
+                <div class="text-xs uppercase font-bold text-slate-500 mb-2">System Status</div>
+                <div id="health-status" class="text-sm font-medium text-slate-700 mb-2">
+                    Click button to test DB
+                </div>
+                <button
+                    hx-get="{{ url_for('main.health') }}"
+                    hx-target="#health-status"
+                    hx-swap="innerHTML"
+                    class="min-h-[44px] px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow transition flex items-center justify-center">
+                    Check DB Connection (/health)
+                </button>
+            </div>
+        </div>
+
+        {% if section %}
+        <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+            <strong>Active View:</strong> {{ section }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Blueprints Quick Grid (Touch targets >= 44px) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Blueprint 1: Auth -->
+        <a href="{{ url_for('auth.login') }}" class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-1">Blueprint</div>
+                <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">Auth</div>
+                <p class="text-xs text-slate-500 mt-1">Owner, Manager, Cashier, Kitchen roles & Flask-Login session guard.</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>View Route</span> &rarr;
+            </div>
+        </a>
+
+        <!-- Blueprint 2: POS -->
+        <a href="{{ url_for('pos.terminal') }}" class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-1">Blueprint</div>
+                <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">POS Terminal</div>
+                <p class="text-xs text-slate-500 mt-1">Dine In, Take Away, Quick Billing, and multi-payment (Cash, bKash, Nagad).</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>View Route</span> &rarr;
+            </div>
+        </a>
+
+        <!-- Blueprint 3: Kitchen -->
+        <a href="{{ url_for('kitchen.display') }}" class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-1">Blueprint</div>
+                <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">Kitchen (KDS)</div>
+                <p class="text-xs text-slate-500 mt-1">Real-time KOT display with order statuses and touch-friendly bump bar.</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>View Route</span> &rarr;
+            </div>
+        </a>
+
+        <!-- Blueprint 4: Admin -->
+        <a href="{{ url_for('admin.dashboard') }}" class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-1">Blueprint</div>
+                <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">Admin</div>
+                <p class="text-xs text-slate-500 mt-1">Restaurant settings (BIN, VAT rate, price mode), staff, tables, menu, audit log.</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>View Route</span> &rarr;
+            </div>
+        </a>
+    </div>
+
+    <!-- Architectural Rules Checklist -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <span class="text-emerald-600 text-lg">✓</span> Architectural Core Invariants Configured
+        </h2>
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-600">
+            <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">•</span>
+                <span><strong>Multi-Tenancy Ready:</strong> All upcoming business entities include <code>restaurant_id</code>.</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">•</span>
+                <span><strong>Server-Side Security:</strong> Flask-Login &amp; CSRF protection initialized across all blueprints.</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">•</span>
+                <span><strong>BDT Financial Standard:</strong> Currency is ৳ (BDT); exact numeric representation configured.</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">•</span>
+                <span><strong>Responsive Touch Target:</strong> All UI elements follow ≥ 44px min dimensions for tablet/touch.</span>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - BanglaPOS{% endblock %}
+
+{% block content %}
+<div class="min-h-[75vh] flex items-center justify-center py-6 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-emerald-600 text-white font-extrabold text-2xl shadow-sm mb-3">
+                ৳
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Sign In to BanglaPOS
+            </h2>
+            <p class="mt-1 text-xs sm:text-sm text-slate-500">
+                Multi-Restaurant Point of Sale &amp; Management System
+            </p>
+        </div>
+
+        <!-- Form -->
+        <form class="mt-6 space-y-5" method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+            {{ form.csrf_token }}
+
+            <!-- Identifier (Email or Phone) -->
+            <div>
+                <label for="identifier" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Email or Phone Number
+                </label>
+                <div class="relative">
+                    {{ form.identifier(
+                        id="identifier",
+                        class="w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition",
+                        placeholder="e.g. owner@restaurant.com or 01712345678",
+                        autocomplete="username"
+                    ) }}
+                </div>
+                {% if form.identifier.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">
+                        {{ form.identifier.errors[0] }}
+                    </p>
+                {% endif %}
+            </div>
+
+            <!-- Password -->
+            <div>
+                <label for="password" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Password
+                </label>
+                <div class="relative">
+                    {{ form.password(
+                        id="password",
+                        class="w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition",
+                        placeholder="••••••••",
+                        autocomplete="current-password"
+                    ) }}
+                </div>
+                {% if form.password.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">
+                        {{ form.password.errors[0] }}
+                    </p>
+                {% endif %}
+                <p class="mt-1 text-[11px] text-slate-400">Minimum 8 characters.</p>
+            </div>
+
+            <!-- Remember Me -->
+            <div class="flex items-center justify-between">
+                <label class="flex items-center min-h-[44px] cursor-pointer">
+                    {{ form.remember(class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 rounded") }}
+                    <span class="ml-2 text-xs font-medium text-slate-600">Remember this terminal</span>
+                </label>
+            </div>
+
+            <!-- Submit Button (44px target) -->
+            <div>
+                <button type="submit"
+                        class="w-full min-h-[44px] flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition active:scale-[0.99]">
+                    Sign In to Portal
+                </button>
+            </div>
+        </form>
+
+        <!-- Initial Setup Guidance -->
+        <div class="pt-4 border-t border-slate-100 text-center">
+            <p class="text-xs text-slate-500">
+                Need an account? Run the terminal setup command:
+            </p>
+            <code class="mt-1 inline-block bg-slate-100 text-slate-800 text-[11px] px-2.5 py-1 rounded font-mono border border-slate-200">
+                flask create-owner
+            </code>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

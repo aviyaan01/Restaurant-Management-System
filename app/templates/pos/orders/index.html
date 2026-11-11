@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Orders Directory - BanglaPOS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Banner -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 mb-2">
+                    Sales &amp; POS Records
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Customer Orders Directory
+                </h1>
+                <p class="text-slate-600 mt-1 text-sm">
+                    Search and inspect customer bills, order items, and dining statuses.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+                <a href="{{ url_for('pos.terminal') }}"
+                   class="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition">
+                    <span>💳</span>
+                    <span>+ New POS Order</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter Form -->
+        <form method="GET" class="mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <!-- Search Order No -->
+            <div class="lg:col-span-2">
+                <input type="text"
+                       name="q"
+                       value="{{ search_query or '' }}"
+                       placeholder="Search by Order # (e.g. 101)..."
+                       class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+            </div>
+
+            <!-- Status Filter -->
+            <div>
+                <select name="status"
+                        class="w-full min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="">All Statuses</option>
+                    <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Open</option>
+                    <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Paid</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+
+            <!-- Type Filter -->
+            <div>
+                <select name="type"
+                        class="w-full min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="">All Types</option>
+                    <option value="dine_in" {% if type_filter == 'dine_in' %}selected{% endif %}>Dine In</option>
+                    <option value="take_away" {% if type_filter == 'take_away' %}selected{% endif %}>Take Away</option>
+                    <option value="quick" {% if type_filter == 'quick' %}selected{% endif %}>Quick Billing</option>
+                </select>
+            </div>
+
+            <!-- Staff Filter -->
+            <div>
+                <select name="staff_id"
+                        class="w-full min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="">All Staff</option>
+                    {% for st in staff_members %}
+                        <option value="{{ st.id }}" {% if staff_filter == st.id %}selected{% endif %}>
+                            {{ st.name }} ({{ st.role }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Actions / Buttons -->
+            <div class="flex items-center gap-2">
+                <button type="submit"
+                        class="flex-1 min-h-[44px] px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition">
+                    Filter
+                </button>
+                {% if search_query or status_filter or type_filter or staff_filter or date_filter %}
+                    <a href="{{ url_for('pos.order_list') }}"
+                       class="min-h-[44px] px-3.5 py-2 border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold rounded-lg flex items-center justify-center transition">
+                        Reset
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <th class="py-3.5 px-4 sm:px-6">Order #</th>
+                        <th class="py-3.5 px-4">Type / Location</th>
+                        <th class="py-3.5 px-4">Cashier</th>
+                        <th class="py-3.5 px-4 text-center">Items</th>
+                        <th class="py-3.5 px-4 text-right">Total (৳ BDT)</th>
+                        <th class="py-3.5 px-4 text-center">Order Status</th>
+                        <th class="py-3.5 px-4 text-center">Payment</th>
+                        <th class="py-3.5 px-4">Created Time</th>
+                        <th class="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                    {% for ord in orders %}
+                        <tr class="hover:bg-slate-50/75 transition">
+                            <!-- Order Number -->
+                            <td class="py-3.5 px-4 sm:px-6 font-extrabold text-slate-900 font-mono text-base">
+                                <a href="{{ url_for('pos.order_detail', order_id=ord.id) }}"
+                                   class="hover:text-emerald-600 transition">
+                                    #{{ ord.order_no }}
+                                </a>
+                            </td>
+
+                            <!-- Order Type / Table -->
+                            <td class="py-3.5 px-4">
+                                {% if ord.type == 'dine_in' %}
+                                    <span class="inline-flex items-center gap-1 text-xs font-bold text-blue-800 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
+                                        🪑 {{ ord.table.name if ord.table else 'Dine In' }}
+                                    </span>
+                                {% elif ord.type == 'take_away' %}
+                                    <span class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                                        🛍️ Take Away
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md">
+                                        ⚡ Quick Bill
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Cashier -->
+                            <td class="py-3.5 px-4 text-xs font-medium text-slate-700">
+                                {{ ord.creator.name if ord.creator else 'System' }}
+                            </td>
+
+                            <!-- Items count -->
+                            <td class="py-3.5 px-4 text-center font-mono text-xs text-slate-600">
+                                {{ ord.items.count() }} items
+                            </td>
+
+                            <!-- Total in BDT -->
+                            <td class="py-3.5 px-4 text-right font-mono font-black text-slate-900 text-sm">
+                                ৳{{ "%.2f"|format(ord.total) }}
+                            </td>
+
+                            <!-- Status -->
+                            <td class="py-3.5 px-4 text-center">
+                                {% if ord.status == 'open' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 animate-pulse">
+                                        Open
+                                    </span>
+                                {% elif ord.status == 'paid' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                        Paid
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                        Cancelled
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Payment Status -->
+                            <td class="py-3.5 px-4 text-center">
+                                {% if ord.payment_status == 'paid' %}
+                                    <span class="text-xs font-bold text-emerald-700">✓ Paid</span>
+                                {% elif ord.payment_status == 'partial' %}
+                                    <span class="text-xs font-bold text-amber-700">Partial</span>
+                                {% else %}
+                                    <span class="text-xs font-bold text-slate-400">Unpaid</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Created At -->
+                            <td class="py-3.5 px-4 text-xs text-slate-500 whitespace-nowrap">
+                                {{ ord.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                                {% if ord.status != 'paid' and ord.status != 'cancelled' %}
+                                    <a href="{{ url_for('pos.order_pay', order_id=ord.id) }}"
+                                       class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition mr-1 min-h-[36px]">
+                                        💵 Pay
+                                    </a>
+                                {% endif %}
+                                <a href="{{ url_for('pos.order_detail', order_id=ord.id) }}"
+                                   class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 hover:bg-blue-50 transition min-h-[36px]">
+                                    Details &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="py-12 text-center text-slate-500">
+                                <span class="text-4xl block mb-2">📋</span>
+                                <p class="text-sm font-semibold text-slate-700">No orders found.</p>
+                                <p class="text-xs text-slate-500 mt-1">Try adjusting your filters or place a new order on the POS register.</p>
+                                <a href="{{ url_for('pos.terminal') }}"
+                                   class="inline-flex items-center min-h-[44px] px-4 py-2 mt-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition">
+                                    + Open POS Register
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if pagination.pages > 1 %}
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <div class="text-xs text-slate-500">
+                    Showing Page <strong class="text-slate-800">{{ pagination.page }}</strong> of <strong class="text-slate-800">{{ pagination.pages }}</strong> ({{ pagination.total }} orders)
+                </div>
+                <div class="flex items-center gap-1.5">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('pos.order_list', page=pagination.prev_num, q=search_query, status=status_filter, type=type_filter, staff_id=staff_filter, date=date_filter) }}"
+                           class="min-h-[36px] px-3 py-1 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-white transition flex items-center">
+                            &larr; Prev
+                        </a>
+                    {% endif %}
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('pos.order_list', page=pagination.next_num, q=search_query, status=status_filter, type=type_filter, staff_id=staff_filter, date=date_filter) }}"
+                           class="min-h-[36px] px-3 py-1 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-white transition flex items-center">
+                            Next &rarr;
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

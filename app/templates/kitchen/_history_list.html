@@ -1,0 +1,53 @@
+{% if completed_tickets %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {% for ticket in completed_tickets %}
+            <div class="rounded-2xl border border-slate-700 bg-slate-900 shadow-md p-4 space-y-3 opacity-90 hover:opacity-100 transition">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xl font-black font-mono text-emerald-400">
+                            #{{ ticket.order_no }}
+                        </span>
+                        <span class="text-xs font-bold text-slate-400">
+                            {% if ticket.order_type == 'dine_in' %}
+                                🪑 {{ ticket.table_name or 'Table' }}
+                            {% elif ticket.order_type == 'take_away' %}
+                                🛍️ Take Away
+                            {% else %}
+                                ⚡ Quick Bill
+                            {% endif %}
+                        </span>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-black uppercase bg-emerald-950 text-emerald-400 border border-emerald-800">
+                        ✓ Ready
+                    </span>
+                </div>
+
+                <div class="space-y-1.5 text-xs text-slate-300">
+                    {% for item in ticket.line_items %}
+                        <div class="flex justify-between items-start">
+                            <span class="font-medium text-slate-200">
+                                <span class="font-bold text-emerald-400 font-mono">{{ item.quantity }}x</span> {{ item.dish_name_snapshot }}
+                            </span>
+                            {% if item.note %}
+                                <span class="text-[10px] text-amber-300 italic truncate max-w-[100px]">"{{ item.note }}"</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                    <span>Ordered: {{ ticket.created_at.strftime('%I:%M %p') }}</span>
+                    <span class="text-slate-400 font-bold">⏱️ {{ ticket.elapsed_minutes }}m total prep</span>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="py-16 text-center text-slate-500 space-y-2">
+        <span class="text-5xl block opacity-50">📋</span>
+        <h4 class="text-lg font-bold text-slate-300">No Completed Tickets Yet Today</h4>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+            Tickets bumped as "Ready" during today's service will appear here in chronological history.
+        </p>
+    </div>
+{% endif %}

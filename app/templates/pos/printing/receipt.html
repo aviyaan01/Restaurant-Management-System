@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Receipt #{{ order.order_no }} - {{ restaurant.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Thermal Receipt Font & Print Styles */
+        body {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                color: #000000 !important;
+            }
+            @page {
+                margin: 0;
+                size: auto;
+            }
+            .thermal-receipt {
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 2mm !important;
+            }
+            .thermal-80 {
+                width: 76mm !important;
+                max-width: 76mm !important;
+                font-size: 12px !important;
+                line-height: 1.25 !important;
+            }
+            .thermal-58 {
+                width: 50mm !important;
+                max-width: 50mm !important;
+                font-size: 10px !important;
+                line-height: 1.2 !important;
+            }
+        }
+
+        /* Screen Preview Widths */
+        .screen-80 {
+            width: 78mm;
+            font-size: 13px;
+        }
+        .screen-58 {
+            width: 54mm;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+
+    <!-- Top Action Bar (Hidden when printing) -->
+    <div class="no-print bg-slate-900 text-white p-3 shadow-md sticky top-0 z-50">
+        <div class="max-w-xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <a href="{{ url_for('pos.order_detail', order_id=order.id) }}"
+               class="min-h-[40px] px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                <span>&larr;</span>
+                <span>Back to Order #{{ order.order_no }}</span>
+            </a>
+
+            <!-- Width Switcher -->
+            <div class="flex items-center gap-1 p-1 bg-slate-800 rounded-lg border border-slate-700 text-xs">
+                <span class="text-slate-400 px-2 font-mono text-[11px]">Paper Width:</span>
+                <a href="{{ url_for('pos.order_receipt', order_id=order.id, width='80') }}"
+                   class="px-3 py-1 rounded font-bold transition {% if width == '80' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:text-white{% endif %}">
+                    80mm
+                </a>
+                <a href="{{ url_for('pos.order_receipt', order_id=order.id, width='58') }}"
+                   class="px-3 py-1 rounded font-bold transition {% if width == '58' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:text-white{% endif %}">
+                    58mm
+                </a>
+            </div>
+
+            <!-- Print Button (>= 44px touch target) -->
+            <button onclick="window.print()"
+                    class="min-h-[44px] px-5 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-sm rounded-xl shadow-md transition flex items-center gap-2 active:scale-95">
+                <span>🖨️</span>
+                <span>Print Receipt</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Printable Receipt Wrapper -->
+    <div class="py-6 px-2 flex justify-center">
+        <div id="receipt-container"
+             class="thermal-receipt bg-white text-black p-4 shadow-xl border border-slate-300 rounded-sm
+                    {% if width == '80' %}screen-80 thermal-80{% else %}screen-58 thermal-58{% endif %}">
+
+            <!-- 1. Header: Restaurant Branding & Tax Information -->
+            <div class="text-center space-y-1 pb-2">
+                <h1 class="font-black text-base sm:text-lg uppercase tracking-tight leading-snug">
+                    {{ restaurant.name }}
+                </h1>
+                {% if restaurant.address %}
+                    <p class="text-[11px] leading-tight text-slate-700 whitespace-pre-line">
+                        {{ restaurant.address }}
+                    </p>
+                {% endif %}
+                {% if restaurant.phone %}
+                    <p class="text-[11px] font-mono">
+                        Phone: {{ restaurant.phone }}
+                    </p>
+                {% endif %}
+                {% if restaurant.bin %}
+                    <p class="text-[11px] font-bold font-mono pt-0.5">
+                        BIN: {{ restaurant.bin }}
+                    </p>
+                {% endif %}
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-600 pt-1">
+                    *** SALES RECEIPT / MUSAK-6.3 ***
+                </p>
+            </div>
+
+            <!-- Dashed Divider -->
+            <div class="border-t border-dashed border-black my-2"></div>
+
+            <!-- 2. Metadata: Order #, Table, Date/Time, Cashier -->
+            <div class="text-[11px] space-y-0.5 font-mono">
+                <div class="flex justify-between font-bold">
+                    <span>Order: #{{ order.order_no }}</span>
+                    <span>
+                        {% if order.type == 'dine_in' %}
+                            Table: {{ order.table.name if order.table else 'Dine In' }}
+                        {% elif order.type == 'take_away' %}
+                            [ Take Away ]
+                        {% else %}
+                            [ Quick Bill ]
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="flex justify-between text-slate-700">
+                    <span>Date: {{ order.created_at.strftime('%d-%b-%Y') }}</span>
+                    <span>{{ order.created_at.strftime('%I:%M %p') }}</span>
+                </div>
+                <div class="flex justify-between text-slate-700">
+                    <span>Cashier: {{ order.creator.name if order.creator else 'Cashier' }}</span>
+                    <span class="uppercase">Status: {{ order.payment_status }}</span>
+                </div>
+            </div>
+
+            <!-- Dashed Divider -->
+            <div class="border-t border-dashed border-black my-2"></div>
+
+            <!-- 3. Line Items Table -->
+            <div class="w-full">
+                <!-- Column Headers -->
+                <div class="flex justify-between font-bold text-[11px] border-b border-black pb-1 mb-1.5">
+                    <span class="w-8">Qty</span>
+                    <span class="flex-1 text-left px-1">Item</span>
+                    <span class="w-14 text-right">Price</span>
+                    <span class="w-16 text-right">Total</span>
+                </div>
+
+                <!-- Item Lines -->
+                <div class="space-y-1 text-[11px] font-mono">
+                    {% for item in order.items.all() %}
+                        <div class="flex justify-between items-start leading-tight">
+                            <span class="w-8 font-bold">{{ item.quantity }}x</span>
+                            <span class="flex-1 text-left px-1 break-words">
+                                {{ item.dish_name_snapshot }}
+                                {% if item.note %}
+                                    <span class="block text-[10px] italic text-slate-600">({{ item.note }})</span>
+                                {% endif %}
+                            </span>
+                            <span class="w-14 text-right">
+                                {{ "%.2f"|format(item.unit_price_snapshot) }}
+                            </span>
+                            <span class="w-16 text-right font-bold">
+                                {{ "%.2f"|format(item.line_total) }}
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Dashed Divider -->
+            <div class="border-t border-dashed border-black my-2"></div>
+
+            <!-- 4. Financial Calculations Breakdown -->
+            <div class="space-y-1 text-[11px] font-mono">
+                <div class="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>৳{{ "%.2f"|format(order.subtotal) }}</span>
+                </div>
+
+                {% if order.discount > 0 %}
+                    <div class="flex justify-between">
+                        <span>Discount:</span>
+                        <span>-৳{{ "%.2f"|format(order.discount) }}</span>
+                    </div>
+                {% endif %}
+
+                {% if order.cover_charge > 0 %}
+                    <div class="flex justify-between">
+                        <span>Cover Charge:</span>
+                        <span>+৳{{ "%.2f"|format(order.cover_charge) }}</span>
+                    </div>
+                {% endif %}
+
+                <div class="flex justify-between">
+                    <span>
+                        VAT ({{ restaurant.vat_rate }}% {{ restaurant.price_mode|capitalize }}):
+                    </span>
+                    <span>৳{{ "%.2f"|format(order.vat_amount) }}</span>
+                </div>
+
+                <!-- Double Line Before Grand Total -->
+                <div class="border-t-2 border-black my-1"></div>
+
+                <div class="flex justify-between font-black text-sm sm:text-base">
+                    <span>NET TOTAL:</span>
+                    <span>৳{{ "%.2f"|format(order.total) }}</span>
+                </div>
+
+                <div class="border-b-2 border-black my-1"></div>
+            </div>
+
+            <!-- 5. Payment Details & Tender Breakdown -->
+            <div class="pt-1 space-y-1 text-[11px] font-mono">
+                {% if completed_payments %}
+                    <div class="font-bold text-[10px] uppercase tracking-wider text-slate-700">
+                        Payment Summary:
+                    </div>
+                    {% for p in completed_payments %}
+                        <div class="flex justify-between text-slate-800">
+                            <span class="capitalize">
+                                {{ p.method }}
+                                {% if p.reference %}
+                                    <span class="text-[10px]">({{ p.reference }})</span>
+                                {% endif %}:
+                            </span>
+                            <span class="font-bold">৳{{ "%.2f"|format(p.amount) }}</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="flex justify-between text-slate-600">
+                        <span>Payment Status:</span>
+                        <span class="uppercase font-bold">{{ order.payment_status }}</span>
+                    </div>
+                {% endif %}
+
+                {% if change_due > 0 or (completed_payments and completed_payments|selectattr('method', 'equalto', 'cash')|list|length > 0) %}
+                    <div class="flex justify-between font-bold pt-1 border-t border-dashed border-slate-300">
+                        <span>Change Returned:</span>
+                        <span>৳{{ "%.2f"|format(change_due) }}</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Dashed Divider -->
+            <div class="border-t border-dashed border-black my-2.5"></div>
+
+            <!-- 6. Footer: Bengali Greeting / Custom Message -->
+            <div class="text-center space-y-1 text-[11px] pt-1">
+                {% if restaurant.receipt_footer %}
+                    <p class="font-bold whitespace-pre-line leading-relaxed">
+                        {{ restaurant.receipt_footer }}
+                    </p>
+                {% else %}
+                    <p class="font-bold">
+                        ধন্যবাদ, আবার আসবেন!
+                    </p>
+                    <p class="text-[10px] text-slate-600">
+                        Thank you for dining with us!
+                    </p>
+                {% endif %}
+                <p class="text-[9px] text-slate-400 font-mono pt-1">
+                    Powered by BanglaPOS
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Autoprint Script (when ?autoprint=1 is passed) -->
+    {% if autoprint %}
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                // Short 250ms delay for fonts and layout stabilization
+                setTimeout(() => {
+                    window.print();
+                }, 250);
+            });
+        </script>
+    {% endif %}
+
+</body>
+</html>

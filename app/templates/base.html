@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSRF Token for HTMX and AJAX calls -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}BanglaPOS - Restaurant Management System{% endblock %}</title>
+
+    <!-- Tailwind CSS (CDN for rapid prototyping & responsive styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bdt: {
+                            50: '#ecfdf5',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX for reactive, low-JS interactions -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
+
+    <!-- Top Navigation Bar (Touch targets >= 44px) -->
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand / Logo -->
+                <div class="flex items-center space-x-3">
+                    <a href="{{ url_for('main.home') }}" class="flex items-center space-x-2 text-xl font-bold tracking-tight text-white hover:text-emerald-400 min-h-[44px] min-w-[44px]">
+                        <span class="bg-emerald-600 text-white text-base font-extrabold px-2.5 py-1 rounded-md shadow-sm">৳</span>
+                        <span>BanglaPOS</span>
+                    </a>
+                    <span class="text-xs bg-slate-800 text-emerald-400 font-semibold px-2 py-0.5 rounded border border-slate-700">Multi-Restaurant</span>
+                </div>
+
+                <!-- Navigation Links with touch-friendly min-h-[44px] -->
+                <nav class="hidden md:flex items-center space-x-2">
+                    <a href="{{ url_for('main.home') }}"
+                       class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                        Home
+                    </a>
+
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.role in ['owner', 'manager', 'cashier'] %}
+                        <a href="{{ url_for('pos.terminal') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                            POS
+                        </a>
+                        <a href="{{ url_for('pos.order_list') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                            Orders
+                        </a>
+                        <a href="{{ url_for('admin.table_board') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                            Tables
+                        </a>
+                        {% endif %}
+
+                        {% if current_user.role in ['owner', 'manager', 'kitchen'] %}
+                        <a href="{{ url_for('kitchen.display') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                            Kitchen (KDS)
+                        </a>
+                        {% endif %}
+
+                        {% if current_user.role in ['owner', 'manager'] %}
+                        <a href="{{ url_for('admin.dashboard') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                            Admin
+                        </a>
+                        {% endif %}
+
+                        {% if current_user.is_owner %}
+                        <a href="{{ url_for('admin.staff_list') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                            Staff
+                        </a>
+                        <a href="{{ url_for('admin.settings') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center transition">
+                            Settings
+                        </a>
+                        {% endif %}
+
+                        <div class="flex items-center gap-2 pl-3 ml-2 border-l border-slate-700">
+                            <span class="text-xs bg-slate-800 px-2.5 py-1 rounded text-slate-300 font-semibold border border-slate-700 flex items-center gap-1.5">
+                                <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                                {{ current_user.name }} ({{ current_user.role.title() }})
+                            </span>
+                            <a href="{{ url_for('auth.logout') }}"
+                               class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 flex items-center transition">
+                                Logout
+                            </a>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('auth.login') }}"
+                           class="min-h-[44px] ml-2 px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm flex items-center transition">
+                            Sign In
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Flash Messages Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="space-y-2 mb-4">
+                    {% for category, message in messages %}
+                        {% set alert_classes = 'bg-blue-50 text-blue-800 border-blue-200' %}
+                        {% if category in ['danger', 'error'] %}
+                            {% set alert_classes = 'bg-rose-50 text-rose-800 border-rose-200' %}
+                        {% elif category == 'success' %}
+                            {% set alert_classes = 'bg-emerald-50 text-emerald-800 border-emerald-200' %}
+                        {% elif category == 'warning' %}
+                            {% set alert_classes = 'bg-amber-50 text-amber-800 border-amber-200' %}
+                        {% endif %}
+                        <div class="p-4 text-sm rounded-lg border {{ alert_classes }} flex items-center justify-between" role="alert">
+                            <span>{{ message }}</span>
+                            <button type="button" onclick="this.parentElement.remove()" class="min-h-[44px] min-w-[44px] -mr-2 text-current opacity-70 hover:opacity-100 flex items-center justify-center font-bold">
+                                ✕
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content Area: Responsive container for 10-inch tablets (min 768px-1024px) & desktop -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        <p>BanglaPOS &copy; 2026 &bull; Designed for Bangladeshi Restaurants &bull; Currency: BDT (৳)</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

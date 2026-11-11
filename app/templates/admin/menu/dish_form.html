@@ -1,0 +1,161 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ title }} - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+            <div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 mb-1">
+                    Menu Item Catalog
+                </span>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {{ title }}
+                </h1>
+            </div>
+            <a href="{{ url_for('admin.dish_list') }}"
+               class="min-h-[44px] px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center transition">
+                &larr; Back to Dishes
+            </a>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" class="space-y-5">
+            {{ form.csrf_token }}
+
+            <!-- Dish Name -->
+            <div>
+                <label for="name" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Dish Name *
+                </label>
+                {{ form.name(
+                    id="name",
+                    class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                    placeholder="e.g. Mutton Kacchi Biryani (Special)"
+                ) }}
+                {% if form.name.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.name.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Category & Veg Type Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="category_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Category *
+                    </label>
+                    {{ form.category_id(
+                        id="category_id",
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition bg-white"
+                    ) }}
+                    {% if form.category_id.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.category_id.errors[0] }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="veg_type" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Dietary Tag *
+                    </label>
+                    {{ form.veg_type(
+                        id="veg_type",
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition bg-white"
+                    ) }}
+                    {% if form.veg_type.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.veg_type.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Price & Discount Grid (Rule 3 & 4) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="price" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Regular Price (৳ BDT) *
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold">
+                            ৳
+                        </span>
+                        {{ form.price(
+                            id="price",
+                            step="0.01",
+                            min="0.00",
+                            class="w-full min-h-[44px] pl-8 pr-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-mono",
+                            placeholder="350.00"
+                        ) }}
+                    </div>
+                    {% if form.price.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.price.errors[0] }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="discount" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Discount (৳ BDT)
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold">
+                            ৳
+                        </span>
+                        {{ form.discount(
+                            id="discount",
+                            step="0.01",
+                            min="0.00",
+                            class="w-full min-h-[44px] pl-8 pr-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-mono",
+                            placeholder="0.00"
+                        ) }}
+                    </div>
+                    {% if form.discount.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.discount.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Prep Time -->
+            <div>
+                <label for="prep_time_minutes" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Estimated Preparation Time (Minutes) *
+                </label>
+                {{ form.prep_time_minutes(
+                    id="prep_time_minutes",
+                    type="number",
+                    min="1",
+                    max="240",
+                    class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-mono",
+                    placeholder="15"
+                ) }}
+                <p class="mt-1 text-[11px] text-slate-500">Used by the Kitchen Display System (KDS) for ticket priority timing.</p>
+                {% if form.prep_time_minutes.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.prep_time_minutes.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Availability Checkbox -->
+            <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <label class="flex items-center min-h-[44px] cursor-pointer">
+                    {{ form.is_available(class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 rounded") }}
+                    <span class="ml-2.5 text-xs font-bold text-slate-800">
+                        Available for ordering immediately on the POS register
+                    </span>
+                </label>
+            </div>
+
+            <!-- Actions (44px target) -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <a href="{{ url_for('admin.dish_list') }}"
+                   class="min-h-[44px] px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-lg transition flex items-center justify-center">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="min-h-[44px] px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-[0.99] flex items-center justify-center">
+                    {% if dish %}Save Dish Changes{% else %}Add Dish to Menu{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

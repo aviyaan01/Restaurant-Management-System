@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOT #{{ order.order_no }} - {{ restaurant.name }} Kitchen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                color: #000000 !important;
+            }
+            @page {
+                margin: 0;
+                size: auto;
+            }
+            .kot-receipt {
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 2mm !important;
+            }
+            .kot-80 {
+                width: 76mm !important;
+                max-width: 76mm !important;
+                font-size: 13px !important;
+                line-height: 1.25 !important;
+            }
+            .kot-58 {
+                width: 50mm !important;
+                max-width: 50mm !important;
+                font-size: 11px !important;
+                line-height: 1.2 !important;
+            }
+        }
+
+        .screen-80 {
+            width: 78mm;
+            font-size: 14px;
+        }
+        .screen-58 {
+            width: 54mm;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+
+    <!-- Top Action Bar (Hidden when printing) -->
+    <div class="no-print bg-slate-900 text-white p-3 shadow-md sticky top-0 z-50">
+        <div class="max-w-xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <button onclick="window.history.back()"
+               class="min-h-[40px] px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                <span>&larr;</span>
+                <span>Back</span>
+            </button>
+
+            <!-- Width Switcher -->
+            <div class="flex items-center gap-1 p-1 bg-slate-800 rounded-lg border border-slate-700 text-xs">
+                <span class="text-slate-400 px-2 font-mono text-[11px]">KOT Width:</span>
+                <a href="{{ url_for('pos.order_kot', order_id=order.id, width='80') }}"
+                   class="px-3 py-1 rounded font-bold transition {% if width == '80' %}bg-amber-500 text-slate-950{% else %}text-slate-300 hover:text-white{% endif %}">
+                    80mm
+                </a>
+                <a href="{{ url_for('pos.order_kot', order_id=order.id, width='58') }}"
+                   class="px-3 py-1 rounded font-bold transition {% if width == '58' %}bg-amber-500 text-slate-950{% else %}text-slate-300 hover:text-white{% endif %}">
+                    58mm
+                </a>
+            </div>
+
+            <!-- Print Button (>= 44px touch target) -->
+            <button onclick="window.print()"
+                    class="min-h-[44px] px-5 py-2 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black text-sm rounded-xl shadow-md transition flex items-center gap-2 active:scale-95">
+                <span>👨‍🍳</span>
+                <span>Print KOT Slip</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Printable KOT Wrapper -->
+    <div class="py-6 px-2 flex justify-center">
+        <div id="kot-container"
+             class="kot-receipt bg-white text-black p-4 shadow-xl border-2 border-black rounded-sm
+                    {% if width == '80' %}screen-80 kot-80{% else %}screen-58 kot-58{% endif %}">
+
+            <!-- 1. Header: High-Impact Kitchen Banner -->
+            <div class="text-center pb-2">
+                <p class="font-extrabold text-sm uppercase tracking-wider">
+                    *** KITCHEN ORDER TICKET ***
+                </p>
+                <div class="text-3xl font-black font-mono tracking-tight my-1">
+                    KOT #{{ order.order_no }}
+                </div>
+                <div class="text-lg font-black uppercase bg-black text-white py-1 px-2 my-1.5">
+                    {% if order.type == 'dine_in' %}
+                        🪑 TABLE: {{ order.table.name if order.table else 'DINE IN' }}
+                    {% elif order.type == 'take_away' %}
+                        🛍️ TAKE AWAY
+                    {% else %}
+                        ⚡ QUICK BILL
+                    {% endif %}
+                </div>
+                <div class="flex justify-between text-[11px] font-mono text-slate-700 pt-1">
+                    <span>Server: {{ order.creator.name if order.creator else 'Staff' }}</span>
+                    <span>{{ order.created_at.strftime('%I:%M %p') }}</span>
+                </div>
+                <div class="text-[10px] text-right text-slate-600 font-mono">
+                    Date: {{ order.created_at.strftime('%d-%b-%Y') }}
+                </div>
+            </div>
+
+            <!-- Heavy Solid Divider -->
+            <div class="border-t-2 border-black my-2"></div>
+
+            <!-- 2. Ordered Items List (STRICTLY NO PRICES / FINANCIALS) -->
+            <div class="space-y-3 py-1">
+                {% for item in items %}
+                    <div class="border-b border-dashed border-slate-400 pb-2 last:border-b-0">
+                        <div class="flex items-baseline gap-2">
+                            <!-- Large Quantity Indicator -->
+                            <span class="text-2xl font-black font-mono tracking-tight shrink-0">
+                                [{{ item.quantity }}]
+                            </span>
+                            <!-- Dish Name in Bold -->
+                            <span class="text-base font-bold leading-snug">
+                                {{ item.dish_name_snapshot }}
+                            </span>
+                        </div>
+
+                        <!-- Special Kitchen Preparation Instructions / Notes -->
+                        {% if item.note %}
+                            <div class="mt-1 text-xs font-bold uppercase pl-8 py-0.5 border-l-2 border-black text-slate-900">
+                                &gt;&gt; NOTE: {{ item.note }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Heavy Double Line Divider -->
+            <div class="border-t-2 border-black my-2"></div>
+
+            <!-- 3. Summary Count Footer -->
+            <div class="flex justify-between font-black text-xs font-mono uppercase">
+                <span>Total Items:</span>
+                <span>{{ items|length }} ({{ items|sum(attribute='quantity') }} Portions)</span>
+            </div>
+
+            <div class="border-b border-black my-1.5"></div>
+
+            <div class="text-center text-[10px] text-slate-600 font-mono pt-1">
+                *** BANGLAPOS KITCHEN TICKET ***
+            </div>
+        </div>
+    </div>
+
+    <!-- Autoprint Script (when ?autoprint=1 is passed) -->
+    {% if autoprint %}
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    window.print();
+                }, 250);
+            });
+        </script>
+    {% endif %}
+
+</body>
+</html>
+

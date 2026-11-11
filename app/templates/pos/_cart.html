@@ -1,0 +1,258 @@
+<div id="pos-cart-container" class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full sticky top-4 overflow-hidden">
+    <!-- Header: Order Type Selector (Touch targets >= 44px) -->
+    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+        <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-200/80 rounded-xl">
+            <!-- Quick Billing Tab -->
+            <button type="button"
+                    hx-post="{{ url_for('pos.cart_set_type') }}"
+                    hx-vals='{"order_type": "quick"}'
+                    hx-target="#pos-cart-container"
+                    hx-swap="outerHTML"
+                    class="min-h-[44px] rounded-lg text-xs font-bold transition flex items-center justify-center gap-1
+                           {% if cart.order_type == 'quick' %} bg-white text-slate-900 shadow-sm {% else %} text-slate-600 hover:text-slate-900 {% endif %}">
+                <span>⚡</span>
+                <span>Quick</span>
+            </button>
+
+            <!-- Take Away Tab -->
+            <button type="button"
+                    hx-post="{{ url_for('pos.cart_set_type') }}"
+                    hx-vals='{"order_type": "take_away"}'
+                    hx-target="#pos-cart-container"
+                    hx-swap="outerHTML"
+                    class="min-h-[44px] rounded-lg text-xs font-bold transition flex items-center justify-center gap-1
+                           {% if cart.order_type == 'take_away' %} bg-white text-slate-900 shadow-sm {% else %} text-slate-600 hover:text-slate-900 {% endif %}">
+                <span>🛍️</span>
+                <span>Take Away</span>
+            </button>
+
+            <!-- Dine In Tab -->
+            <button type="button"
+                    hx-post="{{ url_for('pos.cart_set_type') }}"
+                    hx-vals='{"order_type": "dine_in"}'
+                    hx-target="#pos-cart-container"
+                    hx-swap="outerHTML"
+                    class="min-h-[44px] rounded-lg text-xs font-bold transition flex items-center justify-center gap-1
+                           {% if cart.order_type == 'dine_in' %} bg-white text-slate-900 shadow-sm {% else %} text-slate-600 hover:text-slate-900 {% endif %}">
+                <span>🪑</span>
+                <span>Dine In</span>
+            </button>
+        </div>
+
+        <!-- Dine In Table Selection Dropdown -->
+        {% if cart.order_type == 'dine_in' %}
+            <div class="mt-3">
+                <label for="pos_table_select" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Select Dining Table *
+                </label>
+                <select id="pos_table_select"
+                        name="table_id"
+                        hx-post="{{ url_for('pos.cart_set_type') }}"
+                        hx-vals='{"order_type": "dine_in"}'
+                        hx-target="#pos-cart-container"
+                        hx-swap="outerHTML"
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    <option value="">-- Choose Table --</option>
+                    {% for sp in spaces %}
+                        <optgroup label="🏢 {{ sp.name }}">
+                            {% for tbl in sp.tables.all() %}
+                                {% set active_ord = open_orders_map.get(tbl.id) if open_orders_map is defined else None %}
+                                <option value="{{ tbl.id }}" {% if cart.table_id == tbl.id %}selected{% endif %}>
+                                    {{ tbl.name }} ({{ tbl.capacity }}p) {% if active_ord %} [ACTIVE #{{ active_ord.order_no }}] {% else %} [Open] {% endif %}
+                                </option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endfor %}
+                </select>
+
+                <!-- Appending to Existing Order Banner -->
+                {% if existing_order %}
+                    <div class="mt-2.5 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-sm">⚡</span>
+                            <span>Appending to <strong>Order #{{ existing_order.order_no }}</strong></span>
+                        </div>
+                        <a href="{{ url_for('pos.order_detail', order_id=existing_order.id) }}"
+                           target="_blank"
+                           class="text-[11px] font-bold text-amber-800 underline hover:text-amber-900">
+                            View Order &rarr;
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Middle: Cart Line Items -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-3 min-h-[220px] max-h-[420px]">
+        {% if items %}
+            {% for item in items %}
+                <div class="p-3 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-sm space-y-2">
+                    <!-- Top Row: Name, Unit Price & Remove Button -->
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm leading-tight">
+                                {{ item.name }}
+                            </h4>
+                            <div class="text-xs text-slate-500 font-mono mt-0.5">
+                                ৳{{ "%.2f"|format(item.effective_price) }} each
+                            </div>
+                        </div>
+
+                        <!-- Remove Button (Touch Target >= 44px) -->
+                        <form hx-post="{{ url_for('pos.cart_update_qty', dish_id=item.dish_id) }}"
+                              hx-vals='{"action": "remove"}'
+                              hx-target="#pos-cart-container"
+                              hx-swap="outerHTML">
+                            <button type="submit"
+                                    class="min-h-[44px] min-w-[44px] -mr-2 -mt-2 text-slate-400 hover:text-rose-600 rounded-lg flex items-center justify-center transition"
+                                    title="Remove item">
+                                ✕
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Bottom Row: Quantity Stepper & Line Total -->
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                        <!-- Stepper Buttons (Touch Targets >= 44px) -->
+                        <div class="flex items-center gap-1">
+                            <!-- Minus -->
+                            <form hx-post="{{ url_for('pos.cart_update_qty', dish_id=item.dish_id) }}"
+                                  hx-vals='{"action": "dec"}'
+                                  hx-target="#pos-cart-container"
+                                  hx-swap="outerHTML">
+                                <button type="submit"
+                                        class="h-9 w-9 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-black text-sm flex items-center justify-center transition active:scale-95">
+                                    -
+                                </button>
+                            </form>
+
+                            <!-- Quantity Badge -->
+                            <span class="w-8 text-center font-black text-slate-900 font-mono text-sm">
+                                {{ item.quantity }}
+                            </span>
+
+                            <!-- Plus -->
+                            <form hx-post="{{ url_for('pos.cart_update_qty', dish_id=item.dish_id) }}"
+                                  hx-vals='{"action": "inc"}'
+                                  hx-target="#pos-cart-container"
+                                  hx-swap="outerHTML">
+                                <button type="submit"
+                                        class="h-9 w-9 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-black text-sm flex items-center justify-center transition active:scale-95">
+                                    +
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Line Total in BDT -->
+                        <div class="text-right font-mono font-black text-slate-900 text-sm">
+                            ৳{{ "%.2f"|format(item.line_total) }}
+                        </div>
+                    </div>
+
+                    <!-- Line Item Note Input -->
+                    <div class="pt-1">
+                        <input type="text"
+                               name="note"
+                               value="{{ item.note }}"
+                               placeholder="Special note (e.g. Less spicy)..."
+                               hx-post="{{ url_for('pos.cart_update_note', dish_id=item.dish_id) }}"
+                               hx-trigger="change delay:250ms"
+                               hx-target="#pos-cart-container"
+                               hx-swap="outerHTML"
+                               class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-700 bg-slate-50/50">
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <!-- Empty Cart State -->
+            <div class="py-12 text-center text-slate-400">
+                <span class="text-4xl block mb-2 opacity-50">🛒</span>
+                <p class="font-bold text-slate-700 text-sm">Cart is Empty</p>
+                <p class="text-xs text-slate-500 mt-1 max-w-[200px] mx-auto">
+                    Tap any available dish from the menu to add it to this order.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Bottom: Financial Summary & Place Order Button -->
+    <div class="p-4 border-t border-slate-200 bg-slate-50/80 space-y-3">
+        <!-- Totals Breakdown -->
+        <div class="space-y-1.5 text-xs text-slate-600">
+            <div class="flex justify-between">
+                <span>Subtotal ({{ item_count }} items)</span>
+                <span class="font-mono font-bold text-slate-800">৳{{ "%.2f"|format(financials.subtotal) }}</span>
+            </div>
+
+            {% if financials.discount > 0 %}
+                <div class="flex justify-between text-emerald-700 font-medium">
+                    <span>Discount</span>
+                    <span class="font-mono font-bold">-৳{{ "%.2f"|format(financials.discount) }}</span>
+                </div>
+            {% endif %}
+
+            {% if financials.cover_charge > 0 %}
+                <div class="flex justify-between text-slate-700 font-medium">
+                    <span>Table Cover Charge</span>
+                    <span class="font-mono font-bold text-slate-800">+৳{{ "%.2f"|format(financials.cover_charge) }}</span>
+                </div>
+            {% endif %}
+
+            {% if financials.vat_amount > 0 %}
+                <div class="flex justify-between text-slate-500">
+                    <span>
+                        VAT ({{ financials.vat_rate }}% {{ current_user.restaurant.price_mode }})
+                    </span>
+                    <span class="font-mono font-bold text-slate-700">৳{{ "%.2f"|format(financials.vat_amount) }}</span>
+                </div>
+            {% endif %}
+
+            <div class="pt-2 border-t border-slate-200 flex justify-between items-baseline text-slate-900">
+                <span class="font-extrabold text-sm uppercase tracking-wide">Total Payable</span>
+                <span class="font-mono font-black text-xl text-emerald-700">
+                    ৳{{ "%.2f"|format(financials.total) }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Order Action Buttons -->
+        <div class="pt-2 flex items-center gap-2">
+            <!-- Clear Button -->
+            {% if items %}
+                <form hx-post="{{ url_for('pos.cart_clear') }}"
+                      hx-target="#pos-cart-container"
+                      hx-swap="outerHTML"
+                      hx-confirm="Are you sure you want to clear the entire cart?">
+                    <button type="submit"
+                            class="min-h-[48px] px-3.5 py-2 border border-slate-300 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center shrink-0"
+                            title="Clear Cart">
+                        🗑 Clear
+                    </button>
+                </form>
+            {% endif %}
+
+            <!-- Place Order / Send to Kitchen Button with Double-Click Protection -->
+            <form hx-post="{{ url_for('pos.order_place') }}"
+                  hx-disabled-elt="this"
+                  class="flex-1"
+                  onsubmit="const btn = this.querySelector('button'); if(btn){ btn.disabled = true; btn.innerText = 'Processing Order...'; }">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                        {% if not items %}disabled{% endif %}
+                        class="w-full min-h-[48px] px-4 py-2.5 rounded-xl text-sm font-extrabold shadow-md flex items-center justify-center gap-2 transition
+                               {% if items %}
+                                   bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white cursor-pointer
+                               {% else %}
+                                   bg-slate-300 text-slate-500 cursor-not-allowed
+                               {% endif %}">
+                    {% if existing_order %}
+                        <span>⚡ Send to Kitchen (৳{{ "%.2f"|format(financials.total) }})</span>
+                    {% else %}
+                        <span>✓ Place Order (৳{{ "%.2f"|format(financials.total) }})</span>
+                    {% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

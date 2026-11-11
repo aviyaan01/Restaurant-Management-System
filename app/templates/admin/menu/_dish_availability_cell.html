@@ -1,0 +1,28 @@
+<div id="dish-avail-{{ dish.id }}" class="flex items-center gap-2">
+    {% if dish.is_available %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            Available
+        </span>
+        <button
+            hx-post="{{ url_for('admin.dish_toggle_available', dish_id=dish.id) }}"
+            hx-target="#dish-avail-{{ dish.id }}"
+            hx-swap="outerHTML"
+            class="min-h-[44px] px-3 py-1.5 text-xs font-semibold rounded-lg text-amber-700 hover:bg-amber-50 border border-amber-200 transition flex items-center justify-center">
+            Set Out of Stock
+        </button>
+    {% else %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+            Out of Stock
+        </span>
+        <button
+            hx-post="{{ url_for('admin.dish_toggle_available', dish_id=dish.id) }}"
+            hx-target="#dish-avail-{{ dish.id }}"
+            hx-swap="outerHTML"
+            class="min-h-[44px] px-3 py-1.5 text-xs font-semibold rounded-lg text-emerald-700 hover:bg-emerald-50 border border-emerald-200 transition flex items-center justify-center">
+            Set In Stock
+        </button>
+    {% endif %}
+</div>
+

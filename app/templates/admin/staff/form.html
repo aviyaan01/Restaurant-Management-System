@@ -1,0 +1,134 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ title }} - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+            <div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-100 text-rose-800 mb-1">
+                    Owner Administration
+                </span>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {{ title }}
+                </h1>
+            </div>
+            <a href="{{ url_for('admin.staff_list') }}"
+               class="min-h-[44px] px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center transition">
+                &larr; Back to Staff List
+            </a>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" class="space-y-5">
+            {{ form.csrf_token }}
+
+            <!-- Name -->
+            <div>
+                <label for="name" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Full Name *
+                </label>
+                {{ form.name(
+                    id="name",
+                    class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                    placeholder="e.g. Shakil Ahmed"
+                ) }}
+                {% if form.name.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.name.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Email & Phone Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="email" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Email Address *
+                    </label>
+                    {{ form.email(
+                        id="email",
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-mono",
+                        placeholder="staff@restaurant.com"
+                    ) }}
+                    {% if form.email.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.email.errors[0] }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="phone" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Mobile Number (Optional)
+                    </label>
+                    {{ form.phone(
+                        id="phone",
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                        placeholder="e.g. 01700000000"
+                    ) }}
+                    {% if form.phone.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.phone.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Role Selector (min 44px) -->
+            <div>
+                <label for="role" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    System Role &amp; Permissions *
+                </label>
+                {{ form.role(
+                    id="role",
+                    class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition bg-white"
+                ) }}
+                {% if form.role.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.role.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Password -->
+            <div>
+                <label for="password" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    {% if staff %}New Password (Optional){% else %}Initial Password *{% endif %}
+                </label>
+                {{ form.password(
+                    id="password",
+                    class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                    placeholder="••••••••"
+                ) }}
+                {% if staff %}
+                    <p class="mt-1 text-[11px] text-slate-400">Leave blank to retain current password.</p>
+                {% else %}
+                    <p class="mt-1 text-[11px] text-slate-400">Minimum 8 characters.</p>
+                {% endif %}
+                {% if form.password.errors %}
+                    <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.password.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Active Status (Edit Only) -->
+            {% if form.is_active %}
+                <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                    <label class="flex items-center min-h-[44px] cursor-pointer">
+                        {{ form.is_active(class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 rounded") }}
+                        <span class="ml-2.5 text-xs font-bold text-slate-800">
+                            {{ form.is_active.label.text }}
+                        </span>
+                    </label>
+                </div>
+            {% endif %}
+
+            <!-- Submit Button (44px target) -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <a href="{{ url_for('admin.staff_list') }}"
+                   class="min-h-[44px] px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-lg transition flex items-center justify-center">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="min-h-[44px] px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-[0.99] flex items-center justify-center">
+                    {% if staff %}Save Changes{% else %}Create Staff Member{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

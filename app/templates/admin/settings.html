@@ -1,0 +1,186 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Restaurant &amp; Tax Settings - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-100 text-rose-800">
+                        Owner Only
+                    </span>
+                    <span class="text-xs text-slate-500 font-medium">
+                        Tenant ID #{{ restaurant.id }}
+                    </span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Restaurant Profile &amp; Billing Settings
+                </h1>
+                <p class="text-slate-600 mt-1 text-sm">
+                    Configure your restaurant branding, Business Identification Number (BIN), VAT rate, and receipt footer.
+                </p>
+            </div>
+            <a href="{{ url_for('admin.dashboard') }}"
+               class="min-h-[44px] px-4 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center shrink-0 transition">
+                &larr; Admin Dashboard
+            </a>
+        </div>
+
+        <!-- Invariant Notice (New Orders Only) -->
+        <div class="mt-5 p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
+            <span class="text-amber-600 font-bold text-base leading-none">ℹ</span>
+            <div>
+                <strong>Financial Immutability Invariant:</strong>
+                Changes saved below (such as modifying the VAT rate from 5% to 7.5% or toggling between Inclusive and Exclusive pricing) apply <strong>only to NEW orders</strong> created after saving. Past completed orders preserve their original tax and item price snapshots.
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Form -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <form method="POST" action="{{ url_for('admin.settings') }}" class="space-y-6">
+            {{ form.csrf_token }}
+
+            <!-- Basic Profile Section -->
+            <div>
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 pb-2 border-b border-slate-100">
+                    1. Restaurant Profile
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="name" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Restaurant Name *
+                        </label>
+                        {{ form.name(
+                            id="name",
+                            class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                            placeholder="e.g. Sultan's Dine"
+                        ) }}
+                        {% if form.name.errors %}
+                            <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.name.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="phone" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Primary Contact Phone *
+                        </label>
+                        {{ form.phone(
+                            id="phone",
+                            class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                            placeholder="e.g. 01712345678"
+                        ) }}
+                        {% if form.phone.errors %}
+                            <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.phone.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label for="address" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Physical Address
+                    </label>
+                    {{ form.address(
+                        id="address",
+                        rows="2",
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                        placeholder="e.g. House 42, Road 27, Dhanmondi, Dhaka - 1209"
+                    ) }}
+                    {% if form.address.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.address.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tax & VAT Section -->
+            <div class="pt-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 pb-2 border-b border-slate-100">
+                    2. Taxation &amp; Pricing Parameters (NBR Bangladesh)
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="bin" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Business Identification Number (BIN)
+                        </label>
+                        {{ form.bin(
+                            id="bin",
+                            class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-mono",
+                            placeholder="e.g. 001298475-0101"
+                        ) }}
+                        <p class="mt-1 text-[11px] text-slate-500">Printed on customer receipts for NBR compliance.</p>
+                        {% if form.bin.errors %}
+                            <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.bin.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="vat_rate" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Default VAT Rate (%) *
+                        </label>
+                        <div class="relative">
+                            {{ form.vat_rate(
+                                id="vat_rate",
+                                step="0.01",
+                                min="0.00",
+                                max="100.00",
+                                class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                                placeholder="5.00"
+                            ) }}
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-500">Standard rate in BD restaurants is typically 5.00% or 10.00%.</p>
+                        {% if form.vat_rate.errors %}
+                            <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.vat_rate.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label for="price_mode" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Pricing Calculation Mode *
+                    </label>
+                    {{ form.price_mode(
+                        id="price_mode",
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition bg-white"
+                    ) }}
+                    {% if form.price_mode.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.price_mode.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Receipt Customization Section -->
+            <div class="pt-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 pb-2 border-b border-slate-100">
+                    3. Customer Receipt Customization
+                </h2>
+                <div>
+                    <label for="receipt_footer" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Receipt Footer Greeting
+                    </label>
+                    {{ form.receipt_footer(
+                        id="receipt_footer",
+                        rows="2",
+                        class="w-full min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition",
+                        placeholder="ধন্যবাদ, আবার আসবেন! Powered by BanglaPOS"
+                    ) }}
+                    <p class="mt-1 text-[11px] text-slate-500">Appears at the very bottom of customer printouts.</p>
+                    {% if form.receipt_footer.errors %}
+                        <p class="mt-1 text-xs text-rose-600 font-medium">{{ form.receipt_footer.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Submit Button (min-h-[44px] touch target) -->
+            <div class="pt-4 border-t border-slate-100 flex justify-end">
+                <button type="submit"
+                        class="min-h-[44px] px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-sm transition active:scale-[0.99] flex items-center justify-center">
+                    Save Restaurant Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Menu Dishes &amp; Pricing - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header Banner -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 mb-2">
+                    Menu Management
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Dishes &amp; Price Catalog
+                </h1>
+                <p class="text-slate-600 mt-1 text-sm">
+                    Manage food items, BDT prices, dietary tags, and live instant availability.
+                </p>
+            </div>
+
+            <!-- Header Actions (44px target) -->
+            <div class="flex items-center gap-2">
+                <a href="{{ url_for('admin.category_list') }}"
+                   class="min-h-[44px] px-4 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+                    📁 Categories
+                </a>
+                <a href="{{ url_for('admin.dish_create') }}"
+                   class="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center shrink-0 transition">
+                    + Add New Dish
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter & Search Controls Bar -->
+        <div class="mt-6 pt-6 border-t border-slate-100 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            <form method="GET" action="{{ url_for('admin.dish_list') }}" class="flex flex-col sm:flex-row gap-2 flex-1">
+                <!-- Search Input -->
+                <div class="relative flex-1">
+                    <input type="text"
+                           name="q"
+                           value="{{ search_query }}"
+                           placeholder="Search dishes by name (e.g. Kacchi, Borhani)..."
+                           class="w-full min-h-[44px] pl-10 pr-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        🔍
+                    </span>
+                </div>
+
+                <!-- Category Filter Dropdown -->
+                <select name="category_id"
+                        class="min-h-[44px] px-3.5 py-2 rounded-lg border border-slate-300 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_cat_id == cat.id %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <!-- Hidden preserved flags -->
+                {% if show_archived %}
+                    <input type="hidden" name="archived" value="1">
+                {% endif %}
+
+                <button type="submit"
+                        class="min-h-[44px] px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center justify-center">
+                    Filter
+                </button>
+
+                {% if search_query or selected_cat_id %}
+                    <a href="{{ url_for('admin.dish_list', archived='1' if show_archived else '0') }}"
+                       class="min-h-[44px] px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg transition flex items-center justify-center">
+                        Reset
+                    </a>
+                {% endif %}
+            </form>
+
+            <!-- Archived Toggle Link -->
+            <div class="flex items-center shrink-0">
+                {% if show_archived %}
+                    <a href="{{ url_for('admin.dish_list') }}"
+                       class="min-h-[44px] px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition">
+                        <span>&larr; View Active Menu</span>
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('admin.dish_list', archived='1') }}"
+                       class="min-h-[44px] px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition">
+                        <span>📦 View Archived Dishes</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Dishes Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <th class="py-3.5 px-4 sm:px-6">Dish Details</th>
+                        <th class="py-3.5 px-4">Category</th>
+                        <th class="py-3.5 px-4">Price (৳ BDT)</th>
+                        <th class="py-3.5 px-4 text-center">Prep Time</th>
+                        <th class="py-3.5 px-4">Live Status</th>
+                        <th class="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                    {% for dish in dishes %}
+                        <tr class="hover:bg-slate-50/75 transition {% if dish.is_archived %}bg-slate-50/50 opacity-75{% endif %}">
+                            <!-- Dish Name & Dietary Tag -->
+                            <td class="py-3.5 px-4 sm:px-6">
+                                <div class="flex items-center gap-2">
+                                    {% if dish.veg_type == 'veg' %}
+                                        <span class="h-3 w-3 rounded-full bg-emerald-600 inline-block border-2 border-white ring-1 ring-emerald-600" title="Vegetarian"></span>
+                                    {% elif dish.veg_type == 'egg' %}
+                                        <span class="h-3 w-3 rounded-full bg-amber-500 inline-block border-2 border-white ring-1 ring-amber-500" title="Contains Egg"></span>
+                                    {% else %}
+                                        <span class="h-3 w-3 rounded-full bg-rose-600 inline-block border-2 border-white ring-1 ring-rose-600" title="Non-Vegetarian"></span>
+                                    {% endif %}
+                                    <span class="font-bold text-slate-900">{{ dish.name }}</span>
+                                </div>
+                                {% if dish.is_archived %}
+                                    <span class="inline-block mt-0.5 text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                                        Archived (Hidden from POS)
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Category -->
+                            <td class="py-3.5 px-4">
+                                {% if dish.category %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">
+                                        {{ dish.category.name }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-xs text-slate-400 italic">Uncategorized</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Price & Discount -->
+                            <td class="py-3.5 px-4 font-mono">
+                                {% if dish.discount and dish.discount > 0 %}
+                                    <div class="font-bold text-emerald-700">
+                                        ৳{{ "%.2f"|format(dish.price - dish.discount) }}
+                                    </div>
+                                    <div class="text-[11px] text-slate-400 line-through">
+                                        ৳{{ "%.2f"|format(dish.price) }}
+                                    </div>
+                                {% else %}
+                                    <div class="font-bold text-slate-900">
+                                        ৳{{ "%.2f"|format(dish.price) }}
+                                    </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Prep Time -->
+                            <td class="py-3.5 px-4 text-center font-mono text-xs text-slate-600">
+                                {{ dish.prep_time_minutes }}m
+                            </td>
+
+                            <!-- HTMX Availability Toggle -->
+                            <td class="py-3.5 px-4">
+                                {% if not dish.is_archived %}
+                                    {% include "admin/menu/_dish_availability_cell.html" %}
+                                {% else %}
+                                    <span class="text-xs text-slate-400 italic">Archived</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="py-3.5 px-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ url_for('admin.dish_edit', dish_id=dish.id) }}"
+                                       class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition">
+                                        Edit
+                                    </a>
+
+                                    {% if not dish.is_archived %}
+                                        <form method="POST" action="{{ url_for('admin.dish_delete', dish_id=dish.id) }}"
+                                              onsubmit="return confirm('Are you sure you want to remove dish \'{{ dish.name }}\'? If used in past orders, it will be safely archived.');"
+                                              class="inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit"
+                                                    class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 transition"
+                                                    title="Delete or Archive">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="py-10 text-center text-slate-500 text-sm">
+                                {% if search_query or selected_cat_id %}
+                                    No dishes match your filter criteria.
+                                {% elif show_archived %}
+                                    No dishes currently archived.
+                                {% else %}
+                                    No dishes in the menu yet. Click "+ Add New Dish" to add your first menu item.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if pagination.pages > 1 %}
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <div class="text-xs text-slate-500">
+                    Showing page <strong>{{ pagination.page }}</strong> of <strong>{{ pagination.pages }}</strong> ({{ pagination.total }} items)
+                </div>
+                <div class="flex items-center gap-1">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('admin.dish_list', page=pagination.prev_num, q=search_query, category_id=selected_cat_id, archived='1' if show_archived else '0') }}"
+                           class="min-h-[44px] px-3 py-1.5 rounded border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center">
+                            &larr; Previous
+                        </a>
+                    {% endif %}
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('admin.dish_list', page=pagination.next_num, q=search_query, category_id=selected_cat_id, archived='1' if show_archived else '0') }}"
+                           class="min-h-[44px] px-3 py-1.5 rounded border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center">
+                            Next &rarr;
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

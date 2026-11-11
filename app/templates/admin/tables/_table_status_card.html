@@ -1,0 +1,77 @@
+<div id="table-card-{{ table.id }}"
+     class="relative rounded-xl border p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 shadow-sm
+            {% if table.status == 'occupied' %}
+                bg-gradient-to-br from-amber-50 to-orange-50/50 border-amber-300 ring-1 ring-amber-200
+            {% else %}
+                bg-white border-slate-200 hover:border-emerald-300 hover:shadow-md
+            {% endif %}">
+    
+    <!-- Top Row: Table Name & Status Badge -->
+    <div class="flex items-start justify-between gap-2">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Table
+            </div>
+            <div class="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight flex items-center gap-1.5 mt-0.5">
+                <span>🪑</span>
+                <span>{{ table.name }}</span>
+            </div>
+        </div>
+
+        <div>
+            {% if table.status == 'occupied' %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-amber-500 text-white shadow-sm animate-pulse">
+                    <span class="h-2 w-2 rounded-full bg-white"></span>
+                    Occupied
+                </span>
+            {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                    Open
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Middle: Capacity and Cover Charge Details -->
+    <div class="my-4 py-2 border-y border-slate-100/80 flex items-center justify-between text-xs text-slate-600">
+        <div class="flex items-center gap-1 font-medium">
+            <span>👥</span>
+            <span>{{ table.capacity }} Seats</span>
+        </div>
+        <div>
+            {% if table.cover_charge > 0 %}
+                <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    + ৳{{ "%.2f"|format(table.cover_charge) }} Cover
+                </span>
+            {% else %}
+                <span class="text-slate-400 text-[11px]">No Cover</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Bottom: Quick Status Toggle Action (HTMX reactive, touch target >= 44px) -->
+    <div>
+        <form hx-post="{{ url_for('admin.table_toggle_status', table_id=table.id) }}"
+              hx-target="#table-card-{{ table.id }}"
+              hx-swap="outerHTML"
+              hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'
+              class="w-full">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit"
+                    class="w-full min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center justify-center gap-2 transition shadow-sm
+                           {% if table.status == 'occupied' %}
+                               bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 hover:border-emerald-400
+                           {% else %}
+                               bg-slate-900 hover:bg-slate-800 text-white
+                           {% endif %}">
+                {% if table.status == 'occupied' %}
+                    <span>✓ Release Table (Mark Open)</span>
+                {% else %}
+                    <span>⚡ Mark Occupied</span>
+                {% endif %}
+            </button>
+        </form>
+    </div>
+</div>
+
