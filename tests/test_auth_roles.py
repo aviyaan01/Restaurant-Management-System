@@ -151,6 +151,106 @@ def test_full_auth_and_role_workflow():
         assert audit_count > 0
         print(f"✓ Total audit log entries recorded during tests: {audit_count}.")
 
+def test_self_service_registration_workflow():
+    """
+    Verifies self-service restaurant onboarding:
+    - GET /auth/register renders registration form
+    - Server-side validation rejects invalid phone / duplicate email / password mismatch
+    - Successful registration creates Restaurant, Owner User, starter Space & Tables,
+      AuditLog record, logs in the owner, and redirects to /admin/
+    """
+    from decimal import Decimal
+    from app.models.table import Space, Table
+
+    app = create_app(TestConfig)
+    client = app.test_client()
+
+    with app.app_context():
+        db.create_all()
+
+        # 1. GET /auth/register renders successfully
+        res = client.get('/auth/register')
+        assert res.status_code == 200
+        assert b"Register Your Restaurant" in res.data
+        assert b"restaurant_name" in res.data
+
+        # 2. Reject mismatched passwords
+        res_mismatch = client.post('/auth/register', data={
+            'restaurant_name': 'Test Cafe',
+            'restaurant_phone': '01712345678',
+            'owner_name': 'Test Owner',
+            'owner_email': 'cafe.owner@test.com',
+            'password': 'password123',
+            'confirm_password': 'wrongpassword'
+        })
+        assert b"Passwords do not match" in res_mismatch.data
+
+        # 3. Reject invalid phone number (non-Bangladeshi prefix)
+        res_bad_phone = client.post('/auth/register', data={
+            'restaurant_name': 'Test Cafe',
+            'restaurant_phone': '11111111111',
+            'owner_name': 'Test Owner',
+            'owner_email': 'cafe.owner@test.com',
+            'password': 'password123',
+            'confirm_password': 'password123'
+        })
+        assert b"valid 11-digit Bangladeshi mobile number" in res_bad_phone.data
+
+        # 4. Valid Registration
+        res_valid = client.post('/auth/register', data={
+            'restaurant_name': 'Grand Nawab Cafe',
+            'restaurant_phone': '01711223344',
+            'restaurant_address': 'Gulshan 2, Dhaka',
+            'price_mode': 'inclusive',
+            'vat_rate': '7.50',
+            'owner_name': 'Nawab Owner',
+            'owner_email': 'nawab.owner@test.com',
+            'owner_phone': '01711223344',
+            'password': 'nawabPassword123',
+            'confirm_password': 'nawabPassword123'
+        }, follow_redirects=False)
+
+        assert res_valid.status_code == 302
+        assert res_valid.location == '/admin/'
+
+        # Verify Restaurant created
+        rest = Restaurant.query.filter_by(name='Grand Nawab Cafe').first()
+        assert rest is not None
+        assert rest.vat_rate == Decimal('7.50')
+        assert rest.price_mode == 'inclusive'
+
+        # Verify Owner created
+        owner = User.query.filter_by(email='nawab.owner@test.com').first()
+        assert owner is not None
+        assert owner.role == 'owner'
+        assert owner.restaurant_id == rest.id
+        assert owner.check_password('nawabPassword123')
+
+        # Verify starter space & tables created
+        spaces = Space.query.filter_by(restaurant_id=rest.id).all()
+        assert len(spaces) >= 1
+        tables = Table.query.filter_by(restaurant_id=rest.id).all()
+        assert len(tables) >= 3
+
+        # Verify AuditLog recorded
+        audit = AuditLog.query.filter_by(action='RESTAURANT_REGISTERED', record_id=rest.id).first()
+        assert audit is not None
+
+        # 5. Prevent duplicate email registration
+        client.get('/auth/logout')
+        res_dup = client.post('/auth/register', data={
+            'restaurant_name': 'Another Cafe',
+            'restaurant_phone': '01799887766',
+            'owner_name': 'Second Person',
+            'owner_email': 'nawab.owner@test.com',
+            'password': 'anotherPassword123',
+            'confirm_password': 'anotherPassword123'
+        })
+        assert b"already exists" in res_dup.data
+
+        print("✓ Self-service restaurant registration and owner onboarding workflow verified.")
+
 if __name__ == '__main__':
     test_full_auth_and_role_workflow()
-    print("\nALL STEP 3 REQUIREMENTS PASSED PERFECTLY!")
+    test_self_service_registration_workflow()
+    print("\nALL AUTH REQUIREMENTS PASSED PERFECTLY!")

@@ -103,8 +103,12 @@
                             </a>
                         </div>
                     {% else %}
+                        <a href="{{ url_for('auth.register') }}"
+                           class="min-h-[44px] px-3.5 py-2 rounded-lg text-sm font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 flex items-center transition">
+                            Register Restaurant
+                        </a>
                         <a href="{{ url_for('auth.login') }}"
-                           class="min-h-[44px] ml-2 px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm flex items-center transition">
+                           class="min-h-[44px] ml-1 px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm flex items-center transition">
                             Sign In
                         </a>
                     {% endif %}

@@ -80,14 +80,18 @@
             </div>
         </form>
 
-        <!-- Initial Setup Guidance -->
-        <div class="pt-4 border-t border-slate-100 text-center">
-            <p class="text-xs text-slate-500">
-                Need an account? Run the terminal setup command:
+        <!-- Registration Link -->
+        <div class="pt-6 border-t border-slate-100 text-center space-y-3">
+            <p class="text-xs sm:text-sm text-slate-600">
+                Don't have a restaurant account yet?
             </p>
-            <code class="mt-1 inline-block bg-slate-100 text-slate-800 text-[11px] px-2.5 py-1 rounded font-mono border border-slate-200">
-                flask create-owner
-            </code>
+            <a href="{{ url_for('auth.register') }}"
+               class="w-full min-h-[44px] flex justify-center items-center py-2.5 px-4 border border-emerald-600 rounded-lg text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition active:scale-[0.99]">
+                Register New Restaurant &amp; Owner Account
+            </a>
+            <p class="text-[11px] text-slate-400">
+                Terminal CLI setup also available via: <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">flask create-owner</code>
+            </p>
         </div>
     </div>
 </div>

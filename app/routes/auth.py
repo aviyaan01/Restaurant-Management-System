@@ -1,9 +1,13 @@
 from datetime import datetime, timezone, timedelta
+from decimal import Decimal
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, current_user, login_required
 from app.extensions import db
 from app.models.user import User
-from app.forms.auth import LoginForm
+from app.models.restaurant import Restaurant
+from app.models.table import Space, Table
+from app.models.menu import Category
+from app.forms.auth import LoginForm, RegisterForm
 from app.utils.audit import log_audit
 
 auth_bp = Blueprint('auth', __name__)
@@ -155,3 +159,113 @@ def logout():
 
     flash("You have been signed out safely.", "info")
     return redirect(url_for('auth.login'))
+
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """
+    Self-service restaurant onboarding and owner account creation.
+    Creates a new Restaurant tenant, primary Owner user, starter dining space & tables,
+    starter category, and establishes the authenticated session.
+    """
+    if current_user.is_authenticated:
+        return redirect_for_role(current_user.role)
+
+    form = RegisterForm()
+    if form.validate_on_submit():
+        rest_name = form.restaurant_name.data.strip()
+        rest_phone = form.restaurant_phone.data.strip()
+        rest_address = (form.restaurant_address.data or '').strip() or 'Dhaka, Bangladesh'
+        vat_rate = form.vat_rate.data if form.vat_rate.data is not None else Decimal('5.00')
+        price_mode = form.price_mode.data or 'exclusive'
+
+        owner_name = form.owner_name.data.strip()
+        owner_email = form.owner_email.data.strip().lower()
+        owner_phone = (form.owner_phone.data or '').strip() or rest_phone
+        password = form.password.data
+
+        # 1. Create Restaurant Tenant
+        restaurant = Restaurant(
+            name=rest_name,
+            phone=rest_phone,
+            address=rest_address,
+            vat_rate=vat_rate,
+            price_mode=price_mode,
+            receipt_footer="ধন্যবাদ, আবার আসবেন! Powered by BanglaPOS"
+        )
+        db.session.add(restaurant)
+        db.session.flush()
+
+        # 2. Create Owner User
+        owner = User(
+            restaurant_id=restaurant.id,
+            name=owner_name,
+            email=owner_email,
+            phone=owner_phone,
+            role='owner',
+            is_active=True
+        )
+        owner.set_password(password)
+        db.session.add(owner)
+        db.session.flush()
+
+        # 3. Create starter space and tables for immediate POS readiness
+        starter_space = Space(
+            restaurant_id=restaurant.id,
+            name="Main Dining Floor"
+        )
+        db.session.add(starter_space)
+        db.session.flush()
+
+        tables = [
+            Table(
+                restaurant_id=restaurant.id,
+                space_id=starter_space.id,
+                name="T-01",
+                capacity=4,
+                cover_charge=Decimal('0.00'),
+                status='open'
+            ),
+            Table(
+                restaurant_id=restaurant.id,
+                space_id=starter_space.id,
+                name="T-02",
+                capacity=4,
+                cover_charge=Decimal('0.00'),
+                status='open'
+            ),
+            Table(
+                restaurant_id=restaurant.id,
+                space_id=starter_space.id,
+                name="T-03",
+                capacity=2,
+                cover_charge=Decimal('0.00'),
+                status='open'
+            )
+        ]
+        starter_cat = Category(
+            restaurant_id=restaurant.id,
+            name="General Menu",
+            sort_order=1
+        )
+        db.session.add_all(tables + [starter_cat])
+        db.session.commit()
+
+        # 4. Audit Log initial registration (Rule 5)
+        log_audit(
+            action='RESTAURANT_REGISTERED',
+            record_type='Restaurant',
+            record_id=restaurant.id,
+            details={'name': restaurant.name, 'owner_email': owner.email},
+            user_id=owner.id,
+            restaurant_id=restaurant.id
+        )
+
+        # 5. Automatically log the new owner in
+        login_user(owner)
+        session.permanent = True
+
+        flash(f"Congratulations! Restaurant '{restaurant.name}' has been created. Welcome to BanglaPOS!", "success")
+        return redirect(url_for('admin.dashboard'))
+
+    return render_template('auth/register.html', form=form)
+

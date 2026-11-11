@@ -1,4 +1,4 @@
-from app.forms.auth import LoginForm
+from app.forms.auth import LoginForm, RegisterForm
 from app.forms.settings import RestaurantSettingsForm
 from app.forms.staff import StaffCreateForm, StaffEditForm
 from app.forms.menu import CategoryForm, DishForm
@@ -10,6 +10,7 @@ from app.forms.audit import AuditFilterForm
 
 __all__ = [
     'LoginForm',
+    'RegisterForm',
     'RestaurantSettingsForm',
     'StaffCreateForm',
     'StaffEditForm',
