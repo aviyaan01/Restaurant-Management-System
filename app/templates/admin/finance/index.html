@@ -1,0 +1,306 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Financial Cashbook - BanglaPOS{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header Banner -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                        Cashbook Ledger
+                    </span>
+                    <span class="text-xs text-slate-500 font-medium">
+                        Currency: BDT (৳)
+                    </span>
+                </div>
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">
+                    Financial Cashbook &amp; Expenses
+                </h1>
+                <p class="text-slate-600 text-xs sm:text-sm mt-0.5">
+                    Track kitchen market purchases, operational overhead expenses, and automated POS sales revenue.
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ url_for('admin.finance_export_csv', type=current_type, start_date=current_start_date, end_date=current_end_date) }}"
+                   class="min-h-[44px] px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-2 transition">
+                    <span>📥</span>
+                    <span>Export CSV</span>
+                </a>
+                <a href="{{ url_for('admin.finance_create') }}"
+                   class="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-2 transition">
+                    <span class="text-base font-bold">+</span>
+                    <span>Record Transaction</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aggregate Totals Cards (Today & Monthly) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Today's Balance Card -->
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h3 class="font-bold text-slate-800 text-sm">Today's Daily Totals</h3>
+                </div>
+                <span class="text-xs text-slate-400 font-mono">Live UTC Day</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                    <div class="text-[11px] font-semibold text-emerald-700">Sales</div>
+                    <div class="text-base font-extrabold text-emerald-900 mt-0.5">
+                        ৳{{ "%.2f"|format(daily_totals.sales) }}
+                    </div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-blue-50 border border-blue-100">
+                    <div class="text-[11px] font-semibold text-blue-700">Purchases</div>
+                    <div class="text-base font-extrabold text-blue-900 mt-0.5">
+                        ৳{{ "%.2f"|format(daily_totals.purchases) }}
+                    </div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-100">
+                    <div class="text-[11px] font-semibold text-amber-700">Expenses</div>
+                    <div class="text-base font-extrabold text-amber-900 mt-0.5">
+                        ৳{{ "%.2f"|format(daily_totals.expenses) }}
+                    </div>
+                </div>
+                <div class="p-2.5 rounded-lg {% if daily_totals.net >= 0 %}bg-slate-900 text-white{% else %}bg-rose-50 border border-rose-200 text-rose-900{% endif %}">
+                    <div class="text-[11px] font-semibold {% if daily_totals.net >= 0 %}text-slate-300{% else %}text-rose-700{% endif %}">Net Balance</div>
+                    <div class="text-base font-extrabold mt-0.5">
+                        ৳{{ "%.2f"|format(daily_totals.net) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Balance Card -->
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm">📅</span>
+                    <h3 class="font-bold text-slate-800 text-sm">Current Month Cumulative</h3>
+                </div>
+                <span class="text-xs text-slate-400 font-mono">This Month</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                    <div class="text-[11px] font-semibold text-emerald-700">Month Sales</div>
+                    <div class="text-base font-extrabold text-emerald-900 mt-0.5">
+                        ৳{{ "%.2f"|format(monthly_totals.sales) }}
+                    </div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-blue-50 border border-blue-100">
+                    <div class="text-[11px] font-semibold text-blue-700">Purchases</div>
+                    <div class="text-base font-extrabold text-blue-900 mt-0.5">
+                        ৳{{ "%.2f"|format(monthly_totals.purchases) }}
+                    </div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-100">
+                    <div class="text-[11px] font-semibold text-amber-700">Expenses</div>
+                    <div class="text-base font-extrabold text-amber-900 mt-0.5">
+                        ৳{{ "%.2f"|format(monthly_totals.expenses) }}
+                    </div>
+                </div>
+                <div class="p-2.5 rounded-lg {% if monthly_totals.net >= 0 %}bg-slate-900 text-white{% else %}bg-rose-50 border border-rose-200 text-rose-900{% endif %}">
+                    <div class="text-[11px] font-semibold {% if monthly_totals.net >= 0 %}text-slate-300{% else %}text-rose-700{% endif %}">Net Balance</div>
+                    <div class="text-base font-extrabold mt-0.5">
+                        ৳{{ "%.2f"|format(monthly_totals.net) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <form method="GET" action="{{ url_for('admin.finance_list') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Transaction Type</label>
+                {{ filter_form.type(class="w-full min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white") }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">From Date</label>
+                {{ filter_form.start_date(class="w-full min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white") }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">To Date</label>
+                {{ filter_form.end_date(class="w-full min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white") }}
+            </div>
+            <div class="flex gap-2">
+                <button type="submit"
+                        class="flex-1 min-h-[44px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <span>🔍</span>
+                    <span>Apply Filter</span>
+                </button>
+                <a href="{{ url_for('admin.finance_list') }}"
+                   class="min-h-[44px] px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition flex items-center justify-center">
+                    Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Entries Table Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="font-bold text-slate-900 text-sm">
+                Cashbook Records ({{ pagination.total }} entries)
+            </h2>
+            <div class="text-xs text-slate-500">
+                Page {{ pagination.page }} of {{ pagination.pages or 1 }}
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                    <tr class="bg-slate-50/75 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
+                        <th class="py-3 px-4">Date &amp; Time</th>
+                        <th class="py-3 px-4">Type</th>
+                        <th class="py-3 px-4">Source</th>
+                        <th class="py-3 px-4">Description / Note</th>
+                        <th class="py-3 px-4">Staff</th>
+                        <th class="py-3 px-4 text-right">Amount (৳)</th>
+                        <th class="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% if entries %}
+                        {% for entry in entries %}
+                            <tr class="hover:bg-slate-50/50 transition">
+                                <td class="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
+                                    {{ entry.entry_date.strftime('%Y-%m-%d %I:%M %p') if entry.entry_date else '—' }}
+                                </td>
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    {% if entry.type == 'sale' %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                            Revenue / Sale
+                                        </span>
+                                    {% elif entry.type == 'purchase' %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                            Market Purchase
+                                        </span>
+                                    {% elif entry.type == 'expense' %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                                            Expense
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
+                                            {{ entry.type.title() }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    {% if entry.order_id %}
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                            <span>🔒</span>
+                                            <span>POS Order #{{ entry.order.order_no if entry.order else entry.order_id }}</span>
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600">
+                                            Manual Entry
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4 text-slate-700 max-w-xs truncate" title="{{ entry.note or '' }}">
+                                    {{ entry.note or '—' }}
+                                </td>
+                                <td class="py-3 px-4 text-slate-600 whitespace-nowrap">
+                                    {{ entry.creator.name if entry.creator else 'System' }}
+                                </td>
+                                <td class="py-3 px-4 text-right whitespace-nowrap font-mono font-bold">
+                                    {% if entry.type == 'sale' %}
+                                        <span class="text-emerald-700">+৳{{ "%.2f"|format(entry.amount) }}</span>
+                                    {% elif entry.type == 'purchase' %}
+                                        <span class="text-blue-700">-৳{{ "%.2f"|format(entry.amount) }}</span>
+                                    {% else %}
+                                        <span class="text-amber-700">-৳{{ "%.2f"|format(entry.amount) }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4 text-center whitespace-nowrap">
+                                    {% if entry.order_id %}
+                                        <span class="text-xs text-slate-400 italic font-medium px-2 py-1">
+                                            Read-Only
+                                        </span>
+                                    {% else %}
+                                        <div class="inline-flex items-center gap-1.5">
+                                            <a href="{{ url_for('admin.finance_edit', entry_id=entry.id) }}"
+                                               class="min-h-[36px] px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition flex items-center">
+                                                Edit
+                                            </a>
+                                            <form method="POST" action="{{ url_for('admin.finance_delete', entry_id=entry.id) }}"
+                                                  onsubmit="return confirm('Delete this manual finance entry (৳{{ entry.amount }})? This action cannot be undone.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit"
+                                                        class="min-h-[36px] px-2.5 py-1 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded transition flex items-center">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-slate-400">
+                                <div class="text-3xl mb-2">📋</div>
+                                <div class="font-bold text-slate-600">No finance entries found.</div>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    Adjust your date filters or record a new transaction above.
+                                </p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if pagination.pages > 1 %}
+            <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-500">
+                    Showing entries {{ (pagination.page - 1) * pagination.per_page + 1 }} to {{ pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total }} of {{ pagination.total }}
+                </div>
+                <div class="flex items-center gap-1">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('admin.finance_list', page=pagination.prev_num, type=current_type, start_date=current_start_date, end_date=current_end_date) }}"
+                           class="min-h-[36px] px-3 py-1.5 rounded bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+                            &larr; Prev
+                        </a>
+                    {% endif %}
+
+                    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
+                        {% if p %}
+                            {% if p == pagination.page %}
+                                <span class="min-h-[36px] px-3 py-1.5 rounded bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+                                    {{ p }}
+                                </span>
+                            {% else %}
+                                <a href="{{ url_for('admin.finance_list', page=p, type=current_type, start_date=current_start_date, end_date=current_end_date) }}"
+                                   class="min-h-[36px] px-3 py-1.5 rounded bg-white border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 transition flex items-center justify-center">
+                                    {{ p }}
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <span class="px-2 text-slate-400">…</span>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('admin.finance_list', page=pagination.next_num, type=current_type, start_date=current_start_date, end_date=current_end_date) }}"
+                           class="min-h-[36px] px-3 py-1.5 rounded bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+                            Next &rarr;
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

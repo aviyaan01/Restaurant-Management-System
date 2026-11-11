@@ -9,109 +9,537 @@
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <div class="flex items-center gap-2 mb-2">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                        {{ current_user.role.title() }} Portal
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider {% if metrics.is_owner %}bg-purple-100 text-purple-800 border border-purple-200{% else %}bg-blue-100 text-blue-800 border border-blue-200{% endif %}">
+                        {{ current_user.role.title() }} View
                     </span>
                     <span class="text-xs text-slate-500 font-medium">
                         {{ current_user.restaurant.name }} (BIN: {{ current_user.restaurant.bin or 'Not Configured' }})
                     </span>
                 </div>
                 <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                    Admin &amp; Management Dashboard
+                    {% if metrics.is_owner %}Executive Analytics &amp; Finance{% else %}Operations &amp; Floor Dashboard{% endif %}
                 </h1>
                 <p class="text-slate-600 mt-1 text-sm">
                     Logged in as <strong class="text-slate-900">{{ current_user.name }}</strong> ({{ current_user.email }}).
                 </p>
             </div>
 
-            <!-- Quick Navigation Controls (44px target) -->
+            <!-- Quick Navigation Controls (touch target >= 44px) -->
             <div class="flex flex-wrap gap-2">
                 <a href="{{ url_for('pos.terminal') }}"
                    class="min-h-[44px] px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm flex items-center transition">
                     Open POS Terminal
                 </a>
+                <a href="{{ url_for('pos.order_list') }}"
+                   class="min-h-[44px] px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg shadow-sm flex items-center transition">
+                    Orders Directory
+                </a>
                 <a href="{{ url_for('kitchen.display') }}"
                    class="min-h-[44px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center transition">
-                    Open Kitchen KDS
+                    Kitchen KDS
+                </a>
+                <a href="{{ url_for('admin.finance_list') }}"
+                   class="min-h-[44px] px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg shadow-sm flex items-center transition">
+                    Cashbook
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Administrative Modules Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Menu Categories (Owner & Manager) -->
-        <a href="{{ url_for('admin.category_list') }}"
-           class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
+    <!-- Manager Perspective Notice (if applicable) -->
+    {% if not metrics.is_owner %}
+        <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-3">
+            <span class="text-xl">ℹ️</span>
             <div>
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Menu</span>
-                    <span class="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{{ category_count }} categories</span>
-                </div>
-                <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">Categories</div>
-                <p class="text-xs text-slate-500 mt-1">Organize food sections, display order, and active dish counts.</p>
+                <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wide">Manager Operational Perspective</h4>
+                <p class="text-xs text-blue-800 mt-0.5">
+                    Showing operational order volume, table floor occupancy, and popular menu items.
+                    Bottom-line net profit, petty-cash purchases, and owner-only financial margins remain restricted to the restaurant Owner.
+                </p>
             </div>
-            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
-                <span>Manage Categories</span> &rarr;
-            </div>
-        </a>
+        </div>
+    {% endif %}
 
-        <!-- Dishes & Pricing (Owner & Manager) -->
-        <a href="{{ url_for('admin.dish_list') }}"
-           class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
-            <div>
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Catalog</span>
-                    <span class="text-xs font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full">{{ dish_count }} active dishes</span>
-                </div>
-                <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">Dishes &amp; Prices</div>
-                <p class="text-xs text-slate-500 mt-1">Manage BDT pricing, discounts, dietary types, and instant live availability.</p>
-            </div>
-            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
-                <span>Manage Dishes</span> &rarr;
-            </div>
-        </a>
+    <!-- KPI Summary Cards with Day-over-Day Comparison -->
+    <div>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                {% if metrics.is_owner %}Today's Financial Performance vs Yesterday{% else %}Today's Operational Metrics vs Yesterday{% endif %}
+            </h2>
+            <span class="text-xs text-slate-400 font-mono">Currency: BDT (৳)</span>
+        </div>
 
-        <!-- Staff Management (Strictly Owner-Only) -->
-        {% if current_user.is_owner %}
-            <a href="{{ url_for('admin.staff_list') }}"
-               class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Owner Only</span>
-                        <span class="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{{ staff_count }} staff</span>
+        {% if metrics.is_owner %}
+            <!-- OWNER: Full 6-Card Financial Executive Suite -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- 1. Total Sales (Gross) -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Total Sales Today</span>
+                        <span class="text-lg">💰</span>
                     </div>
-                    <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">Staff &amp; Roles</div>
-                    <p class="text-xs text-slate-500 mt-1">Add staff, assign roles (Cashier, Kitchen, Manager), and instant active toggle.</p>
-                </div>
-                <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
-                    <span>Manage Team</span> &rarr;
-                </div>
-            </a>
-
-            <!-- Restaurant Settings (Strictly Owner-Only) -->
-            <a href="{{ url_for('admin.settings') }}"
-               class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Owner Only</span>
-                        <span class="text-slate-400 text-sm">⚙</span>
+                    <div>
+                        <div class="text-2xl font-black text-slate-900 font-mono">
+                            ৳{{ "%.2f"|format(metrics.kpi_cards.sales.value) }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs">
+                            {% set s = metrics.kpi_cards.sales %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold font-mono
+                                         {% if s.diff > 0 %}bg-emerald-100 text-emerald-800{% elif s.diff < 0 %}bg-rose-100 text-rose-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ "+" if s.diff > 0 else "" }}৳{{ "%.2f"|format(s.diff) }} ({{ "+" if s.pct > 0 else "" }}{{ s.pct }}%)
+                            </span>
+                            <span class="text-slate-400">vs yesterday (৳{{ "%.2f"|format(s.yesterday_value) }})</span>
+                        </div>
                     </div>
-                    <div class="text-lg font-bold text-slate-900 group-hover:text-emerald-600">Restaurant Settings</div>
-                    <p class="text-xs text-slate-500 mt-1">Profile, BIN, VAT rate, price mode (inclusive/exclusive), and receipt footer.</p>
                 </div>
-                <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
-                    <span>Manage Settings</span> &rarr;
+
+                <!-- 2. Paid Orders -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Paid Orders Today</span>
+                        <span class="text-xs font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full">
+                            {{ metrics.kpi_cards.paid.count }} orders
+                        </span>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-900 font-mono">
+                            ৳{{ "%.2f"|format(metrics.kpi_cards.paid.value) }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs">
+                            {% set p = metrics.kpi_cards.paid.comparison %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold font-mono
+                                         {% if p.diff > 0 %}bg-emerald-100 text-emerald-800{% elif p.diff < 0 %}bg-rose-100 text-rose-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ "+" if p.diff > 0 else "" }}৳{{ "%.2f"|format(p.diff) }}
+                            </span>
+                            <span class="text-slate-400">vs yesterday ({{ metrics.kpi_cards.paid.yesterday_count }} orders)</span>
+                        </div>
+                    </div>
                 </div>
-            </a>
+
+                <!-- 3. Unpaid / Open Orders -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Unpaid / Open Orders</span>
+                        <span class="text-xs font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full">
+                            {{ metrics.kpi_cards.unpaid.count }} open
+                        </span>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-900 font-mono">
+                            ৳{{ "%.2f"|format(metrics.kpi_cards.unpaid.value) }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs">
+                            {% set u = metrics.kpi_cards.unpaid.comparison %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold font-mono
+                                         {% if u.diff > 0 %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ "+" if u.diff > 0 else "" }}৳{{ "%.2f"|format(u.diff) }}
+                            </span>
+                            <span class="text-slate-400">vs yesterday ({{ metrics.kpi_cards.unpaid.yesterday_count }} open)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Operating Expenses -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Operating Expenses</span>
+                        <span class="text-lg">📉</span>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-900 font-mono">
+                            ৳{{ "%.2f"|format(metrics.kpi_cards.expenses.value) }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs">
+                            {% set e = metrics.kpi_cards.expenses %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold font-mono
+                                         {% if e.diff > 0 %}bg-rose-100 text-rose-800{% elif e.diff < 0 %}bg-emerald-100 text-emerald-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ "+" if e.diff > 0 else "" }}৳{{ "%.2f"|format(e.diff) }} ({{ "+" if e.pct > 0 else "" }}{{ e.pct }}%)
+                            </span>
+                            <span class="text-slate-400">vs yesterday (৳{{ "%.2f"|format(e.yesterday_value) }})</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Market Purchases (Inventory) -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Kitchen Purchases</span>
+                        <span class="text-lg">🛒</span>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-900 font-mono">
+                            ৳{{ "%.2f"|format(metrics.kpi_cards.purchases.value) }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs">
+                            {% set pr = metrics.kpi_cards.purchases %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold font-mono
+                                         {% if pr.diff > 0 %}bg-blue-100 text-blue-800{% elif pr.diff < 0 %}bg-emerald-100 text-emerald-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ "+" if pr.diff > 0 else "" }}৳{{ "%.2f"|format(pr.diff) }} ({{ "+" if pr.pct > 0 else "" }}{{ pr.pct }}%)
+                            </span>
+                            <span class="text-slate-400">vs yesterday (৳{{ "%.2f"|format(pr.yesterday_value) }})</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Net Profit / Loss -->
+                <div class="p-5 rounded-xl border shadow-sm flex flex-col justify-between
+                            {% if metrics.kpi_cards.net.value >= 0 %}bg-slate-900 text-white border-slate-800{% else %}bg-rose-50 border-rose-200 text-rose-900{% endif %}">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider {% if metrics.kpi_cards.net.value >= 0 %}text-emerald-400{% else %}text-rose-600{% endif %}">
+                            Net Balance Today
+                        </span>
+                        <span class="text-lg">⚖️</span>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black font-mono">
+                            ৳{{ "%.2f"|format(metrics.kpi_cards.net.value) }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs">
+                            {% set n = metrics.kpi_cards.net %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold font-mono
+                                         {% if n.diff > 0 %}bg-emerald-500/20 text-emerald-300{% elif n.diff < 0 %}bg-rose-500/20 text-rose-300{% else %}bg-slate-700 text-slate-300{% endif %}">
+                                {{ "+" if n.diff > 0 else "" }}৳{{ "%.2f"|format(n.diff) }} ({{ "+" if n.pct > 0 else "" }}{{ n.pct }}%)
+                            </span>
+                            <span class="{% if metrics.kpi_cards.net.value >= 0 %}text-slate-400{% else %}text-rose-700{% endif %}">
+                                vs yesterday (৳{{ "%.2f"|format(n.yesterday_value) }})
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- MANAGER: Operational Suite (No Bottom-Line Net Profit / Purchases / Expenses) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- 1. Total Orders -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Orders Placed Today</span>
+                        <span class="text-lg">📋</span>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-black text-slate-900 font-mono">
+                            {{ metrics.kpi_cards.orders_count.today }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                            <span class="font-bold {% if metrics.kpi_cards.orders_count.diff >= 0 %}text-emerald-600{% else %}text-rose-600{% endif %}">
+                                {{ "+" if metrics.kpi_cards.orders_count.diff >= 0 else "" }}{{ metrics.kpi_cards.orders_count.diff }}
+                            </span>
+                            <span>vs yesterday ({{ metrics.kpi_cards.orders_count.yesterday }} orders)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Paid Orders Count -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Paid &amp; Completed</span>
+                        <span class="text-lg">✅</span>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-black text-emerald-700 font-mono">
+                            {{ metrics.kpi_cards.paid.count }}
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500">
+                            Yesterday: {{ metrics.kpi_cards.paid.yesterday_count }} completed
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Unpaid / In-Progress Orders Count -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Active / Open Orders</span>
+                        <span class="text-lg">⏳</span>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-black text-amber-700 font-mono">
+                            {{ metrics.kpi_cards.unpaid.count }}
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500">
+                            Currently open in billing or dining
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Dining Table Occupancy -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Table Occupancy</span>
+                        <span class="text-lg">🪑</span>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-black text-slate-900 font-mono">
+                            {{ metrics.kpi_cards.tables.occupancy_pct }}%
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500">
+                            {{ metrics.kpi_cards.tables.occupied }} occupied / {{ metrics.kpi_cards.tables.total }} total tables
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Active Menu Items -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-purple-700">Active Menu</span>
+                        <span class="text-lg">🍲</span>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-black text-slate-900 font-mono">
+                            {{ dish_count }}
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500">
+                            Dishes live across {{ category_count }} categories
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Floor Spaces -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Dining Spaces</span>
+                        <span class="text-lg">🏢</span>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-black text-slate-900 font-mono">
+                            {{ space_count }}
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500">
+                            Configured floor dining zones
+                        </div>
+                    </div>
+                </div>
+            </div>
         {% endif %}
     </div>
 
-    <!-- Manager Perspective Note -->
-    {% if not current_user.is_owner %}
-        <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800">
-            <strong>Manager Permissions:</strong> As a Manager, you have full access to Menu Categories, Dishes, and operational terminals. Sensitive tax settings and staff account management remain restricted to the restaurant Owner.
+    <!-- Charts and Top Dishes Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Sales Charts (Owner gets Revenue charts; Manager gets Trend context) -->
+        <div class="lg:col-span-7 space-y-6">
+            <!-- Chart 1: Today's Hourly Sales Breakdown -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">Today's Hourly Revenue</h3>
+                        <p class="text-xs text-slate-500">Sales volume distributed from 00:00 to 23:00</p>
+                    </div>
+                    <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Hourly (৳)</span>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="hourlySalesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: This Week's Daily Sales Trend -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">This Week's Daily Revenue Trend</h3>
+                        <p class="text-xs text-slate-500">Daily sales totals across the past 7 days</p>
+                    </div>
+                    <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">7 Days (৳)</span>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="weeklySalesChart"></canvas>
+                </div>
+            </div>
         </div>
-    {% endif %}
+
+        <!-- Top 5 Selling Dishes -->
+        <div class="lg:col-span-5">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">Top 5 Selling Dishes</h3>
+                        <p class="text-xs text-slate-500">Ranked by total quantity sold</p>
+                    </div>
+                    <span class="text-xs font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded">★ Popular</span>
+                </div>
+
+                {% if metrics.top_dishes %}
+                    <div class="space-y-4">
+                        {% for dish in metrics.top_dishes %}
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs
+                                                {% if dish.rank == 1 %}bg-amber-400 text-amber-950{% elif dish.rank == 2 %}bg-slate-300 text-slate-800{% elif dish.rank == 3 %}bg-amber-700 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                                        #{{ dish.rank }}
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-slate-900 text-xs sm:text-sm">
+                                            {{ dish.name }}
+                                        </div>
+                                        <div class="text-[11px] text-slate-500">
+                                            {{ dish.quantity }} portions ordered
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if metrics.is_owner %}
+                                    <div class="text-right">
+                                        <div class="font-mono font-bold text-emerald-700 text-xs sm:text-sm">
+                                            ৳{{ "%.2f"|format(dish.revenue) }}
+                                        </div>
+                                        <div class="text-[10px] text-slate-400">Gross</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="py-12 text-center text-slate-400">
+                        <div class="text-3xl mb-2">🍽️</div>
+                        <div class="font-bold text-slate-600 text-sm">No sales data yet</div>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Dishes will appear here as POS orders are recorded.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Administrative Modules Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Menu Categories -->
+        <a href="{{ url_for('admin.category_list') }}"
+           class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[130px]">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Menu</span>
+                    <span class="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{{ category_count }}</span>
+                </div>
+                <div class="text-base font-bold text-slate-900 group-hover:text-emerald-600">Categories</div>
+                <p class="text-xs text-slate-500 mt-1">Organize food sections and sort order.</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>Manage</span> &rarr;
+            </div>
+        </a>
+
+        <!-- Dishes & Pricing -->
+        <a href="{{ url_for('admin.dish_list') }}"
+           class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[130px]">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Catalog</span>
+                    <span class="text-xs font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full">{{ dish_count }}</span>
+                </div>
+                <div class="text-base font-bold text-slate-900 group-hover:text-emerald-600">Dishes &amp; Prices</div>
+                <p class="text-xs text-slate-500 mt-1">BDT pricing, discounts, and availability.</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>Manage</span> &rarr;
+            </div>
+        </a>
+
+        <!-- Floor Tables -->
+        <a href="{{ url_for('admin.table_board') }}"
+           class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[130px]">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Floor</span>
+                    <span class="text-xs font-bold bg-blue-50 text-blue-800 px-2 py-0.5 rounded-full">{{ table_count }}</span>
+                </div>
+                <div class="text-base font-bold text-slate-900 group-hover:text-emerald-600">Table Board</div>
+                <p class="text-xs text-slate-500 mt-1">Live status, occupancy, and seating.</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>View Board</span> &rarr;
+            </div>
+        </a>
+
+        <!-- Finance Cashbook -->
+        <a href="{{ url_for('admin.finance_list') }}"
+           class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between min-h-[130px]">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Accounts</span>
+                    <span class="text-xs font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full">৳ Ledger</span>
+                </div>
+                <div class="text-base font-bold text-slate-900 group-hover:text-emerald-600">Cashbook</div>
+                <p class="text-xs text-slate-500 mt-1">Petty cash, purchases, and expenses.</p>
+            </div>
+            <div class="text-xs font-semibold text-emerald-600 flex items-center gap-1 mt-3">
+                <span>Open Ledger</span> &rarr;
+            </div>
+        </a>
+    </div>
 </div>
+
+<!-- Chart.js Integration -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Hourly Sales Chart
+    const hourlyCtx = document.getElementById('hourlySalesChart');
+    if (hourlyCtx) {
+        new Chart(hourlyCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ metrics.charts.hourly.labels | tojson }},
+                datasets: [{
+                    label: 'Sales (৳ BDT)',
+                    data: {{ metrics.charts.hourly.data | tojson }},
+                    backgroundColor: 'rgba(16, 185, 129, 0.75)',
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) { return '৳' + value; }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // 2. Weekly Daily Sales Trend Chart
+    const weeklyCtx = document.getElementById('weeklySalesChart');
+    if (weeklyCtx) {
+        new Chart(weeklyCtx, {
+            type: 'line',
+            data: {
+                labels: {{ metrics.charts.weekly.labels | tojson }},
+                datasets: [{
+                    label: 'Daily Sales (৳ BDT)',
+                    data: {{ metrics.charts.weekly.data | tojson }},
+                    borderColor: 'rgb(14, 165, 233)',
+                    backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: 'rgb(14, 165, 233)',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) { return '৳' + value; }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

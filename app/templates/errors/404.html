@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}404 Not Found - BanglaPOS{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center py-10 px-4">
+    <div class="max-w-lg w-full bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 text-amber-700 mb-4 text-2xl font-black">
+            🔍
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">404 - Page or Record Not Found</h1>
+        <p class="mt-2 text-sm text-slate-600">
+            {{ error.description if error and error.description and error.description != 'The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.' else "The requested page, order, or entity could not be found, or it belongs to another restaurant tenant." }}
+        </p>
+
+        {% if current_user.is_authenticated %}
+        <div class="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 border border-slate-200">
+            Tenant: <strong class="text-slate-900">{{ current_user.restaurant.name }}</strong> &bull; Signed in as: <span class="font-bold text-slate-800">{{ current_user.name }}</span>
+        </div>
+        {% endif %}
+
+        <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a href="{{ url_for('main.home') }}"
+               class="min-h-[44px] px-5 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition flex items-center justify-center w-full sm:w-auto">
+                Return to Safety
+            </a>
+            <button onclick="window.history.back()"
+                    class="min-h-[44px] px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition flex items-center justify-center w-full sm:w-auto">
+                &larr; Go Back
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

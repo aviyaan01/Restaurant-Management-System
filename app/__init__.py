@@ -59,6 +59,32 @@ def create_app(config_class=None):
         """Custom 403 Forbidden handler returning clean, role-aware error UI."""
         return render_template('errors/403.html', error=error), 403
 
+    @app.errorhandler(404)
+    def not_found_error(error):
+        """Custom 404 handler for missing resources or cross-tenant guesses."""
+        return render_template('errors/404.html', error=error), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        """Custom 500 handler ensuring transactional rollback."""
+        db.session.rollback()
+        return render_template('errors/500.html', error=error), 500
+
+    @app.after_request
+    def set_security_headers(response):
+        """Injects defense-in-depth HTTP security headers."""
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        if not app.debug:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return response
+
+    # ProxyFix middleware for production reverse proxy (Nginx -> Gunicorn)
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     # Register blueprints
     from app.routes.main import main_bp
     from app.routes.auth import auth_bp

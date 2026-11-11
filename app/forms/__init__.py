@@ -5,6 +5,8 @@ from app.forms.menu import CategoryForm, DishForm
 from app.forms.table import SpaceForm, TableForm, BulkTableForm
 from app.forms.order import OrderCancelForm, OrderFilterForm
 from app.forms.payment import PaymentForm
+from app.forms.finance import FinanceEntryForm, FinanceFilterForm
+from app.forms.audit import AuditFilterForm
 
 __all__ = [
     'LoginForm',
@@ -19,4 +21,7 @@ __all__ = [
     'OrderCancelForm',
     'OrderFilterForm',
     'PaymentForm',
+    'FinanceEntryForm',
+    'FinanceFilterForm',
+    'AuditFilterForm',
 ]

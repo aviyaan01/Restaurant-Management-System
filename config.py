@@ -32,6 +32,9 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
+    PREFERRED_URL_SCHEME = 'https'
 
 config_by_name = {
     'development': DevelopmentConfig,

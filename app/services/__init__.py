@@ -16,6 +16,21 @@ from app.services.kitchen_service import (
     bump_ticket,
     bump_order_item
 )
+from app.services.finance_service import (
+    create_manual_finance_entry,
+    update_manual_finance_entry,
+    delete_manual_finance_entry,
+    get_finance_cashbook,
+    get_dashboard_metrics
+)
+from app.services.audit_service import (
+    get_audit_logs,
+    export_audit_logs_csv
+)
+from app.services.export_service import (
+    export_finance_csv,
+    export_orders_csv
+)
 
 __all__ = [
     'set_table_status',
@@ -32,4 +47,13 @@ __all__ = [
     'get_completed_kds_tickets',
     'bump_ticket',
     'bump_order_item',
+    'create_manual_finance_entry',
+    'update_manual_finance_entry',
+    'delete_manual_finance_entry',
+    'get_finance_cashbook',
+    'get_dashboard_metrics',
+    'get_audit_logs',
+    'export_audit_logs_csv',
+    'export_finance_csv',
+    'export_orders_csv',
 ]

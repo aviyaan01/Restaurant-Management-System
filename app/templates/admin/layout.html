@@ -117,6 +117,27 @@
                 <span>Kitchen Display (KDS)</span>
             </a>
 
+            {% if current_user.role in ['owner', 'manager'] %}
+            <!-- Group: Finance & Accounts (Owner & Manager) -->
+            <div class="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Finance &amp; Accounts
+            </div>
+
+            <a href="{{ url_for('admin.finance_list') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'finance' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">💰</span>
+                <span>Cashbook &amp; Expenses</span>
+            </a>
+
+            <a href="{{ url_for('admin.audit_list') }}"
+               class="min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-3 transition
+                      {% if 'audit' in request.endpoint %} bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 {% else %} text-slate-700 hover:bg-slate-100 {% endif %}">
+                <span class="text-base">📜</span>
+                <span>Audit Trail</span>
+            </a>
+            {% endif %}
+
             <!-- Group 4: Administration (STRICTLY OWNER-ONLY) -->
             {% if current_user.is_owner %}
                 <div class="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-rose-500 flex items-center justify-between">

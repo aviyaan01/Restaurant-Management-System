@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from datetime import date, datetime, timezone
+from flask import Blueprint, render_template, redirect, url_for, flash, request, Response
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models.restaurant import Restaurant
@@ -6,11 +7,30 @@ from app.models.user import User
 from app.models.menu import Category, Dish
 from app.models.table import Space, Table
 from app.models.order import Order, OrderItem
+from app.models.finance import FinanceEntry
+from app.models.audit import AuditLog
 from app.forms.settings import RestaurantSettingsForm
 from app.forms.staff import StaffCreateForm, StaffEditForm
 from app.forms.menu import CategoryForm, DishForm
 from app.forms.table import SpaceForm, TableForm, BulkTableForm
+from app.forms.finance import FinanceEntryForm, FinanceFilterForm
+from app.forms.audit import AuditFilterForm
 from app.services.table_service import set_table_status, can_delete_table, can_delete_space
+from app.services.finance_service import (
+    create_manual_finance_entry,
+    update_manual_finance_entry,
+    delete_manual_finance_entry,
+    get_finance_cashbook,
+    get_dashboard_metrics
+)
+from app.services.audit_service import (
+    get_audit_logs,
+    export_audit_logs_csv
+)
+from app.services.export_service import (
+    export_finance_csv,
+    export_orders_csv
+)
 from app.utils.decorators import role_required
 from app.utils.audit import log_audit
 
@@ -23,7 +43,9 @@ def dashboard():
     """
     Management & Admin Dashboard.
     Accessible to Owners and Managers.
-    Settings and Staff management are shown only to Owners.
+    - Owner sees comprehensive financial metrics (Sales, Paid, Unpaid, Expenses, Purchases, Net Profit),
+      day-over-day delta comparisons, sales charts, and top selling dishes with revenue.
+    - Manager sees an operational view (order counts, tables, top dishes by volume) without owner-only financial totals.
     """
     staff_count = User.query.filter_by(restaurant_id=current_user.restaurant_id).count()
     category_count = Category.query.filter_by(restaurant_id=current_user.restaurant_id).count()
@@ -32,6 +54,8 @@ def dashboard():
     table_count = Table.query.filter_by(restaurant_id=current_user.restaurant_id).count()
     occupied_count = Table.query.filter_by(restaurant_id=current_user.restaurant_id, status='occupied').count()
 
+    metrics = get_dashboard_metrics(current_user.restaurant_id, current_user.role)
+
     return render_template(
         'admin/dashboard.html',
         staff_count=staff_count,
@@ -39,7 +63,8 @@ def dashboard():
         dish_count=dish_count,
         space_count=space_count,
         table_count=table_count,
-        occupied_count=occupied_count
+        occupied_count=occupied_count,
+        metrics=metrics
     )
 
 @admin_bp.route('/owner-only')
@@ -1235,3 +1260,373 @@ def staff_toggle_status(user_id):
     action_text = "activated" if user.is_active else "deactivated"
     flash(f"Staff member '{user.name}' has been {action_text}.", "success")
     return redirect(url_for('admin.staff_list'))
+
+# ==============================================================================
+# FINANCIAL CASHBOOK & EXPENSES (OWNER & MANAGER)
+# ==============================================================================
+
+@admin_bp.route('/finance')
+@login_required
+@role_required('owner', 'manager')
+def finance_list():
+    """
+    Cashbook ledger directory with type and date range filters, pagination,
+    and daily/monthly aggregate balance totals.
+    Read-only protection for automated POS order sales entries.
+    """
+    page = request.args.get('page', 1, type=int)
+    entry_type = request.args.get('type', 'all')
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = None
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = None
+
+    filter_form = FinanceFilterForm(request.args)
+    if start_date:
+        filter_form.start_date.data = start_date
+    if end_date:
+        filter_form.end_date.data = end_date
+    if entry_type:
+        filter_form.type.data = entry_type
+
+    cashbook_data = get_finance_cashbook(
+        restaurant_id=current_user.restaurant_id,
+        entry_type=entry_type,
+        start_date=start_date,
+        end_date=end_date,
+        page=page,
+        per_page=15
+    )
+
+    return render_template(
+        'admin/finance/index.html',
+        filter_form=filter_form,
+        pagination=cashbook_data['pagination'],
+        entries=cashbook_data['entries'],
+        daily_totals=cashbook_data['daily_totals'],
+        monthly_totals=cashbook_data['monthly_totals'],
+        current_type=entry_type,
+        current_start_date=start_date_str,
+        current_end_date=end_date_str
+    )
+
+@admin_bp.route('/finance/new', methods=['GET', 'POST'])
+@login_required
+@role_required('owner', 'manager')
+def finance_create():
+    """Create a new manual finance cashbook entry (market purchase, expense, or manual sale)."""
+    form = FinanceEntryForm()
+
+    if form.validate_on_submit():
+        try:
+            entry = create_manual_finance_entry(
+                restaurant_id=current_user.restaurant_id,
+                user_id=current_user.id,
+                entry_type=form.type.data,
+                amount=form.amount.data,
+                note=form.note.data,
+                entry_date=form.entry_date.data
+            )
+            flash(f"Finance entry recorded: {entry.type.title()} ৳{entry.amount:,.2f}", "success")
+            return redirect(url_for('admin.finance_list'))
+        except ValueError as e:
+            flash(str(e), "danger")
+
+    return render_template('admin/finance/form.html', form=form, mode='create')
+
+@admin_bp.route('/finance/<int:entry_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required('owner', 'manager')
+def finance_edit(entry_id):
+    """
+    Edit a manual finance entry.
+    INVARIANT: Automated POS sales entries (order_id is not None) are strictly read-only.
+    """
+    entry = FinanceEntry.query.filter_by(
+        id=entry_id,
+        restaurant_id=current_user.restaurant_id
+    ).first_or_404()
+
+    if entry.order_id is not None:
+        flash("Entries automatically generated from POS orders are read-only and cannot be modified.", "danger")
+        return redirect(url_for('admin.finance_list'))
+
+    form = FinanceEntryForm()
+    if request.method == 'GET':
+        form.type.data = entry.type
+        form.amount.data = entry.amount
+        form.entry_date.data = entry.entry_date.date() if entry.entry_date else date.today()
+        form.note.data = entry.note
+
+    if form.validate_on_submit():
+        try:
+            update_manual_finance_entry(
+                entry_id=entry.id,
+                restaurant_id=current_user.restaurant_id,
+                user_id=current_user.id,
+                entry_type=form.type.data,
+                amount=form.amount.data,
+                note=form.note.data,
+                entry_date=form.entry_date.data
+            )
+            flash(f"Finance entry #{entry.id} updated successfully.", "success")
+            return redirect(url_for('admin.finance_list'))
+        except (ValueError, PermissionError) as e:
+            flash(str(e), "danger")
+
+    return render_template('admin/finance/form.html', form=form, mode='edit', entry=entry)
+
+@admin_bp.route('/finance/<int:entry_id>/delete', methods=['POST'])
+@login_required
+@role_required('owner', 'manager')
+def finance_delete(entry_id):
+    """
+    Delete a manual finance entry.
+    INVARIANT: Automated POS sales entries (order_id is not None) are strictly read-only.
+    """
+    entry = FinanceEntry.query.filter_by(
+        id=entry_id,
+        restaurant_id=current_user.restaurant_id
+    ).first_or_404()
+
+    if entry.order_id is not None:
+        flash("Entries automatically generated from POS orders are read-only and cannot be deleted.", "danger")
+        return redirect(url_for('admin.finance_list'))
+
+    try:
+        delete_manual_finance_entry(
+            entry_id=entry.id,
+            restaurant_id=current_user.restaurant_id,
+            user_id=current_user.id
+        )
+        flash(f"Finance entry #{entry.id} deleted successfully.", "success")
+    except (ValueError, PermissionError) as e:
+        flash(str(e), "danger")
+
+    return redirect(url_for('admin.finance_list'))
+
+# ==============================================================================
+# AUDIT LOG & COMPLIANCE (OWNER FULL, MANAGER VIEW-ONLY)
+# ==============================================================================
+
+@admin_bp.route('/audit')
+@login_required
+@role_required('owner', 'manager')
+def audit_list():
+    """
+    Compliance Audit Trail viewer.
+    - Owner: Full access (filtering, inspection, CSV export).
+    - Manager: View-only access (can view and filter; no administrative export).
+    - Non-negotiable Rule 5 & Immutability: Audit records CANNOT be edited or deleted through the app.
+    """
+    page = request.args.get('page', 1, type=int)
+    user_id_param = request.args.get('user_id', '')
+    action_param = request.args.get('action', '')
+    record_type_param = request.args.get('record_type', '')
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = None
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = None
+
+    # Populate staff choices for dropdown
+    staff_members = User.query.filter_by(restaurant_id=current_user.restaurant_id).order_by(User.name.asc()).all()
+    user_choices = [('', 'All Staff Members')] + [(str(u.id), f"{u.name} ({u.role.title()})") for u in staff_members]
+
+    filter_form = AuditFilterForm(request.args)
+    filter_form.user_id.choices = user_choices
+    if user_id_param:
+        filter_form.user_id.data = user_id_param
+    if action_param:
+        filter_form.action.data = action_param
+    if record_type_param:
+        filter_form.record_type.data = record_type_param
+    if start_date:
+        filter_form.start_date.data = start_date
+    if end_date:
+        filter_form.end_date.data = end_date
+
+    user_id_int = int(user_id_param) if user_id_param and user_id_param.isdigit() else None
+
+    pagination = get_audit_logs(
+        restaurant_id=current_user.restaurant_id,
+        user_id=user_id_int,
+        action=action_param,
+        record_type=record_type_param,
+        start_date=start_date,
+        end_date=end_date,
+        page=page,
+        per_page=25
+    )
+
+    return render_template(
+        'admin/audit/index.html',
+        filter_form=filter_form,
+        pagination=pagination,
+        logs=pagination.items,
+        current_user_id=user_id_param,
+        current_action=action_param,
+        current_record_type=record_type_param,
+        current_start_date=start_date_str,
+        current_end_date=end_date_str,
+        is_owner=(current_user.role == 'owner')
+    )
+
+@admin_bp.route('/audit/export.csv')
+@login_required
+@role_required('owner')
+def audit_export_csv():
+    """CSV export of audit logs for off-server compliance archival (Owner only)."""
+    user_id_param = request.args.get('user_id', '')
+    action_param = request.args.get('action', '')
+    record_type_param = request.args.get('record_type', '')
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = None
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = None
+
+    user_id_int = int(user_id_param) if user_id_param and user_id_param.isdigit() else None
+
+    csv_data = export_audit_logs_csv(
+        restaurant_id=current_user.restaurant_id,
+        user_id=user_id_int,
+        action=action_param,
+        record_type=record_type_param,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    filename = f"audit_log_{current_user.restaurant_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
+
+# ==============================================================================
+# CSV EXPORT ROUTES (OWNER & MANAGER)
+# ==============================================================================
+
+@admin_bp.route('/finance/export.csv')
+@login_required
+@role_required('owner', 'manager')
+def finance_export_csv():
+    """
+    CSV export for financial cashbook entries.
+    Exported totals match on-screen totals exactly.
+    """
+    entry_type = request.args.get('type', 'all')
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = None
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = None
+
+    csv_data = export_finance_csv(
+        restaurant_id=current_user.restaurant_id,
+        entry_type=entry_type,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    filename = f"finance_cashbook_{current_user.restaurant_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
+
+@admin_bp.route('/orders/export.csv')
+@login_required
+@role_required('owner', 'manager')
+def orders_export_csv():
+    """
+    CSV export for orders directory.
+    Exported totals match on-screen totals exactly.
+    """
+    status = request.args.get('status', 'all')
+    order_type = request.args.get('type', 'all')
+    staff_id_str = request.args.get('staff', '')
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+    order_no_str = request.args.get('order_no', '').strip()
+
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = None
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = None
+
+    staff_id = int(staff_id_str) if staff_id_str and staff_id_str.isdigit() else None
+    order_no = int(order_no_str) if order_no_str and order_no_str.isdigit() else None
+
+    csv_data = export_orders_csv(
+        restaurant_id=current_user.restaurant_id,
+        status=status,
+        order_type=order_type,
+        staff_id=staff_id,
+        start_date=start_date,
+        end_date=end_date,
+        order_no=order_no
+    )
+
+    filename = f"orders_{current_user.restaurant_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
