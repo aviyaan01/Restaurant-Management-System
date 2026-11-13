@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 from app.extensions import db
 
 class AuditLog(db.Model):
@@ -7,6 +8,9 @@ class AuditLog(db.Model):
     Immutable log capturing who changed what and when within a restaurant tenant.
     """
     __tablename__ = 'audit_logs'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     restaurant_id = db.Column(

@@ -1,3 +1,4 @@
+from typing import Any
 from app.extensions import db
 from app.models.base import TenantMixin
 
@@ -8,6 +9,9 @@ class Order(TenantMixin, db.Model):
     All financial totals stored as exact Numeric(12, 2) in BDT (Rule 3).
     """
     __tablename__ = 'orders'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     order_no = db.Column(db.Integer, nullable=False)
     type = db.Column(db.String(20), nullable=False)  # 'dine_in', 'take_away', 'quick'
@@ -52,6 +56,9 @@ class OrderItem(TenantMixin, db.Model):
     at the exact moment of sale, unaffected by future dish price changes or menu alterations.
     """
     __tablename__ = 'order_items'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id', ondelete='CASCADE'), nullable=False, index=True)
     dish_id = db.Column(db.Integer, db.ForeignKey('dishes.id', ondelete='SET NULL'), nullable=True, index=True)

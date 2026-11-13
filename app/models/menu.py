@@ -1,3 +1,4 @@
+from typing import Any
 from app.extensions import db
 from app.models.base import TenantMixin
 
@@ -6,6 +7,9 @@ class Category(TenantMixin, db.Model):
     Menu category entity (e.g. Biryani, Appetizers, Beverages, Desserts).
     """
     __tablename__ = 'categories'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     name = db.Column(db.String(100), nullable=False)
     sort_order = db.Column(db.Integer, default=0, nullable=False)
@@ -27,6 +31,9 @@ class Dish(TenantMixin, db.Model):
     Prices are stored as Numeric(12, 2) BDT (Rule 3).
     """
     __tablename__ = 'dishes'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id', ondelete='SET NULL'), nullable=True, index=True)
     name = db.Column(db.String(150), nullable=False)

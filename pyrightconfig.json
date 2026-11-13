@@ -1,0 +1,23 @@
+{
+  "include": [
+    "app",
+    "tests",
+    "seed_demo.py",
+    "run.py",
+    "config.py"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "venv"
+  ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.14"
+    }
+  ],
+  "reportCallIssue": "none",
+  "reportArgumentType": "none"
+}
+

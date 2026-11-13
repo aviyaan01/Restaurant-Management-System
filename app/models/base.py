@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 from sqlalchemy.orm import declared_attr
 from app.extensions import db
 
@@ -17,6 +18,9 @@ class TimestampMixin:
         nullable=False
     )
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
 class TenantMixin(TimestampMixin):
     """
     Non-negotiable Rule 1: Every business table has restaurant_id and every query filters by it.
@@ -30,4 +34,7 @@ class TenantMixin(TimestampMixin):
             nullable=False,
             index=True
         )
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 

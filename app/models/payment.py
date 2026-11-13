@@ -1,3 +1,4 @@
+from typing import Any
 from app.extensions import db
 from app.models.base import TenantMixin
 
@@ -7,6 +8,9 @@ class Payment(TenantMixin, db.Model):
     Supports split payments across multiple methods: Cash, bKash, Nagad, Card.
     """
     __tablename__ = 'payments'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id', ondelete='CASCADE'), nullable=False, index=True)
     method = db.Column(db.String(20), nullable=False)  # 'cash', 'bkash', 'nagad', 'card'

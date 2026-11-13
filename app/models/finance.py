@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 from app.extensions import db
 from app.models.base import TenantMixin
 
@@ -8,6 +9,9 @@ class FinanceEntry(TenantMixin, db.Model):
     Sales revenue, petty-cash purchases (raw ingredients), and operational expenses (utility, rent, wages).
     """
     __tablename__ = 'finance_entries'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     type = db.Column(db.String(20), nullable=False)  # 'sale', 'purchase', 'expense'
     amount = db.Column(db.Numeric(12, 2), nullable=False)  # BDT ৳ (Rule 3)

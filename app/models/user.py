@@ -1,3 +1,4 @@
+from typing import Any
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app.extensions import db
@@ -9,6 +10,9 @@ class User(TenantMixin, UserMixin, db.Model):
     Roles: 'owner', 'manager', 'cashier', 'kitchen'
     """
     __tablename__ = 'users'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=False)

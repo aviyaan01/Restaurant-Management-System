@@ -1,3 +1,4 @@
+from typing import Any
 from app.extensions import db
 from app.models.base import TenantMixin
 
@@ -6,6 +7,9 @@ class Space(TenantMixin, db.Model):
     Dining zone/space within a restaurant (e.g., Ground Floor, AC Dining, Rooftop).
     """
     __tablename__ = 'spaces'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     name = db.Column(db.String(100), nullable=False)
 
@@ -24,6 +28,9 @@ class Table(TenantMixin, db.Model):
     Individual dining table entity.
     """
     __tablename__ = 'tables'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     space_id = db.Column(db.Integer, db.ForeignKey('spaces.id', ondelete='CASCADE'), nullable=False, index=True)
     name = db.Column(db.String(50), nullable=False)  # e.g., 'T-01', 'VIP-2'

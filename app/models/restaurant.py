@@ -1,3 +1,4 @@
+from typing import Any
 from app.extensions import db
 from app.models.base import TimestampMixin
 
@@ -7,6 +8,9 @@ class Restaurant(TimestampMixin, db.Model):
     Holds tax (BIN, VAT rate), pricing configuration, and receipt customization.
     """
     __tablename__ = 'restaurants'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     name = db.Column(db.String(150), nullable=False)
     address = db.Column(db.Text, nullable=True)
